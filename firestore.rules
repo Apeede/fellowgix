@@ -40,8 +40,8 @@ service cloud.firestore {
     match /attendance/{document=**} {
       // Anyone can read attendance records
       allow read: if true;
-      // Anyone can create attendance records (check-in)
-      allow create: if true;
+      // Authenticated users can create attendance records (check-in)
+      allow create: if request.auth != null;
       // Only admins can update/delete
       allow update, delete: if request.auth != null && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
@@ -49,8 +49,8 @@ service cloud.firestore {
     match /guests/{document=**} {
       // Anyone can read guest records
       allow read: if true;
-      // Anyone can create guest records (check-in)
-      allow create: if true;
+      // Authenticated users can create guest records (check-in)
+      allow create: if request.auth != null;
       // Only admins can update/delete
       allow update, delete: if request.auth != null && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
