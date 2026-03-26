@@ -65,6 +65,8 @@ const ECardPage: React.FC = () => {
           month: 'long',
           day: 'numeric',
         }),
+        eventTheme: event.theme,
+        eventSpeaker: event.speaker,
         attendeeName: state.attendeeName,
         attendeeEmail: state.attendeeEmail,
         attendeePhone: state.attendeePhone,

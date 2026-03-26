@@ -3,6 +3,8 @@ import html2canvas from 'html2canvas';
 export interface ECardData {
   eventName: string;
   eventDate: string;
+  eventTheme?: string;
+  eventSpeaker?: string;
   attendeeName: string;
   attendeeEmail: string;
   attendeePhone: string;
@@ -66,7 +68,7 @@ export class ECardGeneratorService {
       left: -9999px;
       top: -9999px;
       width: 800px;
-      height: 500px;
+      height: 600px;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     `;
 
@@ -80,120 +82,136 @@ export class ECardGeneratorService {
         background: linear-gradient(135deg, ${bgColor} 0%, ${this.darkenColor(bgColor, 20)} 100%);
         border-radius: 20px;
         display: flex;
+        flex-direction: column;
         overflow: hidden;
         box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        position: relative;
       ">
-        <!-- Left Section: Event Info -->
+        <!-- Header -->
+        <div style="
+          background: rgba(255,255,255,0.1);
+          padding: 30px 40px 20px;
+          text-align: center;
+          border-bottom: 1px solid rgba(255,255,255,0.2);
+        ">
+          <h1 style="
+            font-size: 32px;
+            font-weight: 700;
+            color: white;
+            margin: 0;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+          ">
+            Thank You for Attending
+          </h1>
+        </div>
+
+        <!-- Main Content -->
         <div style="
           flex: 1;
-          padding: 40px 30px;
-          color: white;
+          padding: 30px 40px;
           display: flex;
           flex-direction: column;
           justify-content: space-between;
         ">
-          <div>
-            <div style="font-size: 12px; opacity: 0.8; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">
-              Check-In Confirmed
-            </div>
-            <h1 style="
-              font-size: 28px;
-              font-weight: 700;
-              margin: 0 0 10px 0;
-              line-height: 1.2;
+          <!-- Thank You Message -->
+          <div style="color: white; margin-bottom: 30px;">
+            <p style="
+              font-size: 16px;
+              line-height: 1.6;
+              margin: 0;
+              text-align: center;
             ">
-              ${this.escapeHtml(data.eventName)}
-            </h1>
-            <div style="font-size: 14px; opacity: 0.9; margin-bottom: 20px;">
-              ${this.escapeHtml(data.eventDate)}
+              Thank you for joining us at this fellowship. Your presence contributed to a meaningful and engaging experience, and we truly appreciate the time you took to be part of it.
+            </p>
+          </div>
+
+          <!-- Event Details -->
+          <div style="
+            background: rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            color: white;
+          ">
+            <h3 style="
+              font-size: 18px;
+              font-weight: 600;
+              margin: 0 0 15px 0;
+              text-align: center;
+            ">
+              Event Details
+            </h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 14px;">
+              <div><strong>Event:</strong> ${this.escapeHtml(data.eventName)}</div>
+              <div><strong>Date:</strong> ${this.escapeHtml(data.eventDate)}</div>
+              ${data.eventTheme ? `<div><strong>Theme:</strong> ${this.escapeHtml(data.eventTheme)}</div>` : ''}
+              ${data.eventSpeaker ? `<div><strong>Speaker:</strong> ${this.escapeHtml(data.eventSpeaker)}</div>` : ''}
             </div>
           </div>
 
-          <div>
-            <div style="margiin-bottom: 15px; font-size: 12px; opacity: 0.8; text-transform: uppercase; letter-spacing: 1px;">
-              Event Attendee
-            </div>
+          <!-- Attendee Info -->
+          <div style="
+            background: rgba(255,255,255,0.95);
+            border-radius: 12px;
+            padding: 20px;
+            color: #1f2937;
+            text-align: center;
+          ">
+            <h3 style="
+              font-size: 18px;
+              font-weight: 600;
+              margin: 0 0 15px 0;
+              color: ${bgColor};
+            ">
+              Attendee
+            </h3>
             <p style="
               font-size: 20px;
               font-weight: 600;
-              margin: 0;
-              word-break: break-word;
+              margin: 0 0 8px 0;
             ">
               ${this.escapeHtml(data.attendeeName)}
             </p>
             <p style="
-              font-size: 12px;
-              opacity: 0.85;
-              margin: 8px 0 0 0;
+              font-size: 14px;
+              color: #6b7280;
+              margin: 0;
             ">
-              ${this.escapeHtml(data.attendeeEmail)}
+              ${data.club ? this.escapeHtml(data.club) : 'Guest'}
+            </p>
+          </div>
+
+          <!-- Footer Message -->
+          <div style="
+            text-align: center;
+            color: white;
+            margin-top: 20px;
+          ">
+            <p style="
+              font-size: 14px;
+              font-style: italic;
+              margin: 0;
+            ">
+              We look forward to welcoming you again.
             </p>
           </div>
         </div>
 
-        <!-- Right Section: Attendee Info -->
+        <!-- Bottom Decoration -->
         <div style="
-          flex: 0 0 350px;
-          background: rgba(255,255,255,0.95);
-          padding: 40px 30px;
+          height: 60px;
+          background: rgba(255,255,255,0.1);
           display: flex;
-          flex-direction: column;
-          justify-content: space-between;
           align-items: center;
+          justify-content: center;
+          border-top: 1px solid rgba(255,255,255,0.2);
         ">
-          <!-- Attendee Details -->
           <div style="
-            width: 100%;
+            font-size: 12px;
+            color: rgba(255,255,255,0.7);
             text-align: center;
-            color: #1f2937;
           ">
-            <div style="
-              font-size: 11px;
-              color: #6b7280;
-              text-transform: uppercase;
-              letter-spacing: 1px;
-              margin-bottom: 8px;
-              font-weight: 600;
-            ">
-              Type
-            </div>
-            <p style="
-              font-size: 14px;
-              font-weight: 600;
-              margin: 0 0 16px 0;
-              text-transform: capitalize;
-            ">
-              ${data.type === 'member' ? '👤 Member' : '🌟 Guest'}
-            </p>
-
-            ${data.club ? `
-              <div style="
-                font-size: 11px;
-                color: #6b7280;
-                text-transform: uppercase;
-                letter-spacing: 1px;
-                margin-bottom: 4px;
-                font-weight: 600;
-              ">
-                Club
-              </div>
-              <p style="
-                font-size: 13px;
-                margin: 0 0 16px 0;
-                word-break: break-word;
-              ">
-                ${this.escapeHtml(data.club)}
-              </p>
-            ` : ''}
-
-            <div style="
-              border-top: 1px solid #e5e7eb;
-              padding-top: 16px;
-              font-size: 11px;
-              color: #9ca3af;
-            ">
-              Checked in on ${this.escapeHtml(data.checkInTime)}
-            </div>
+            Checked in on ${this.escapeHtml(data.checkInTime)}
           </div>
         </div>
       </div>
