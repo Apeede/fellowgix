@@ -53,7 +53,7 @@ const ScannerPage: React.FC = () => {
       // Extract event ID from QR code data
       // Expected format: http://localhost:5173/events/eventId/checkin
       const urlParts = decodedText.split('/');
-      const eventId = urlParts[4]; // /events/eventId/checkin -> ['', 'events', 'eventId', 'checkin']
+      const eventId = urlParts[2]; // /events/eventId/checkin -> ['', 'events', 'eventId', 'checkin']
 
       if (eventId) {
         // Stop scanner before navigation
