@@ -51,9 +51,24 @@ const ScannerPage: React.FC = () => {
 
     try {
       // Extract event ID from QR code data
-      // Expected format: http://localhost:5173/events/eventId/checkin
-      const urlParts = decodedText.split('/');
-      const eventId = urlParts[2]; // /events/eventId/checkin -> ['', 'events', 'eventId', 'checkin']
+      // Supports: /scan/:eventId and /events/:eventId/checkin
+      let eventId: string | null = null;
+
+      try {
+        const parsedUrl = new URL(decodedText);
+        const pathname = parsedUrl.pathname.replace(/\/+$/, '');
+        const scanMatch = pathname.match(/^\/(?:scan|events)\/([^\/]+)(?:\/checkin)?$/);
+
+        if (scanMatch) {
+          eventId = scanMatch[1];
+        }
+      } catch {
+        // fallback to simple split for non-URL text
+        const urlParts = decodedText.split('/').filter(Boolean);
+        if (urlParts.length >= 2 && (urlParts[0] === 'scan' || urlParts[0] === 'events')) {
+          eventId = urlParts[1];
+        }
+      }
 
       if (eventId) {
         // Stop scanner before navigation

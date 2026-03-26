@@ -88,7 +88,10 @@ class QRCodeGeneratorService {
     baseUrl: string = window.location.origin
   ): Promise<HTMLCanvasElement> {
     try {
-      const qrData = `${baseUrl}/scan/${eventId}`;
+      const finalBaseUrl = baseUrl.includes('localhost')
+        ? 'https://fellowgix.web.app'
+        : baseUrl;
+      const qrData = `${finalBaseUrl}/events/${eventId}/checkin`;
       const canvas = document.createElement('canvas');
       await QRCode.toCanvas(canvas, qrData, {
         errorCorrectionLevel: 'M',
