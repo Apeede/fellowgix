@@ -1,0 +1,63 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Allow read/write access on admins - special handling for initial setup
+    match /admins/{document=**} {
+      // Allow authenticated users to read their own doc (needed for login flow)
+      // OR allow admins to read all docs
+      allow read: if request.auth != null && (
+        request.auth.uid == document || 
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+      
+      // Allow create if:
+      // 1. No admins exist yet (first-time setup), OR
+      // 2. User is authenticated and is an existing admin
+      allow create: if 
+        !exists(/databases/$(database)/documents/admins/document) || 
+        (request.auth != null && exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
+      
+      // Only existing admins can update/delete
+      allow update, delete: if request.auth != null && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+    
+    match /members/{document=**} {
+      // Anyone can read members
+      allow read: if true;
+      // Only admins can create/update members
+      allow create, update: if request.auth != null && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      allow delete: if request.auth != null && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+    
+    match /events/{document=**} {
+      // Anyone can read events
+      allow read: if true;
+      // Only admins can write events
+      allow create, update, delete: if request.auth != null && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+    
+    match /attendance/{document=**} {
+      // Anyone can read attendance records
+      allow read: if true;
+      // Anyone can create attendance records (check-in)
+      allow create: if true;
+      // Only admins can update/delete
+      allow update, delete: if request.auth != null && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+    
+    match /guests/{document=**} {
+      // Anyone can read guest records
+      allow read: if true;
+      // Anyone can create guest records (check-in)
+      allow create: if true;
+      // Only admins can update/delete
+      allow update, delete: if request.auth != null && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    // Default deny all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

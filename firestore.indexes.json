@@ -1,0 +1,47 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "members",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "isActive", "order": "ASCENDING"},
+        {"fieldPath": "club", "order": "ASCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "attendance",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "eventId", "order": "ASCENDING"},
+        {"fieldPath": "checkInTime", "order": "DESCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "events",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "createdBy", "order": "ASCENDING"},
+        {"fieldPath": "isActive", "order": "ASCENDING"},
+        {"fieldPath": "date", "order": "DESCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "events",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "createdBy", "order": "ASCENDING"},
+        {"fieldPath": "isActive", "order": "ASCENDING"},
+        {"fieldPath": "date", "order": "ASCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "guests",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "eventId", "order": "ASCENDING"},
+        {"fieldPath": "visitCount", "order": "DESCENDING"}
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
