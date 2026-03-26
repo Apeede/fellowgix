@@ -87,7 +87,7 @@ const ScannerPage: React.FC = () => {
           <div className="flex items-center gap-4">
             <button
               type="button"
-              onClick={() => navigate('/events')}
+              onClick={() => navigate(-1)}
               aria-label="Go back"
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
             >

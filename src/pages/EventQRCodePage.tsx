@@ -18,13 +18,6 @@ const EventQRCodePage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(!event);
   const [showDetails, setShowDetails] = useState(true);
 
-  // Load event if not passed via state
-  useEffect(() => {
-    if (!event && eventId) {
-      loadEvent();
-    }
-  }, [eventId, event, loadEvent]);
-
   const loadEvent = useCallback(async () => {
     if (!eventId) return;
 
@@ -44,6 +37,13 @@ const EventQRCodePage: React.FC = () => {
       setIsLoading(false);
     }
   }, [eventId, navigate]);
+
+  // Load event if not passed via state
+  useEffect(() => {
+    if (!event && eventId) {
+      loadEvent();
+    }
+  }, [eventId, loadEvent]);
 
   const handleDownload = async () => {
     if (!event) return;

@@ -34,8 +34,13 @@ class QRCodeGeneratorService {
         errorCorrectionLevel = 'M',
       } = options;
 
+      // Use production URL if on localhost (phones can't access localhost)
+      const finalBaseUrl = baseUrl.includes('localhost') 
+        ? 'https://fellowgix.web.app' 
+        : baseUrl;
+
       // Create the QR code data: URL that points to event check-in page
-      const qrData = `${baseUrl}/scan/${eventId}`;
+      const qrData = `${finalBaseUrl}/scan/${eventId}`;
 
       // Generate QR code as data URL (PNG image)
       const qrDataUrl = await QRCode.toDataURL(qrData, {
