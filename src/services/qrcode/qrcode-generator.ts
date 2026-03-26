@@ -40,7 +40,7 @@ class QRCodeGeneratorService {
         : baseUrl;
 
       // Create the QR code data: URL that points to event check-in page
-      const qrData = `${finalBaseUrl}/scan/${eventId}`;
+      const qrData = `${finalBaseUrl}/events/${eventId}/checkin`;
 
       // Generate QR code as data URL (PNG image)
       const qrDataUrl = await QRCode.toDataURL(qrData, {
