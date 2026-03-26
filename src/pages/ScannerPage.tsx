@@ -25,7 +25,16 @@ const ScannerPage: React.FC = () => {
     try {
       const devices = await Html5QrcodeScanner.getCameras();
       if (devices && devices.length > 0) {
-        initializeScanner();
+        try {
+          scannerRef.current = new Html5QrcodeScanner(
+            'qr-scanner',
+            { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1, disableFlip: false },
+            false
+          );
+          scannerRef.current.render(onScanSuccess, onScanError);
+        } catch (err) {
+          setError('Failed to initialize camera');
+        }
       } else {
         setHasCamera(false);
         setError('No camera found on this device');
@@ -34,28 +43,9 @@ const ScannerPage: React.FC = () => {
       setHasCamera(false);
       setError('Camera permission denied or not available');
     }
-  }, []);
+  }, [onScanSuccess]);
 
-  const initializeScanner = () => {
-    try {
-      scannerRef.current = new Html5QrcodeScanner(
-        'qr-scanner',
-        {
-          fps: 10,
-          qrbox: { width: 250, height: 250 },
-          aspectRatio: 1,
-          disableFlip: false,
-        },
-        false
-      );
-
-      scannerRef.current.render(onScanSuccess, onScanError);
-    } catch (err) {
-      setError('Failed to initialize camera');
-    }
-  };
-
-  const onScanSuccess = (decodedText: string) => {
+  const onScanSuccess = useCallback((decodedText: string) => {
     setIsLoading(true);
     setError(null);
 
@@ -82,7 +72,7 @@ const ScannerPage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [navigate]);
 
   const onScanError = () => {
     // Suppress error messages during scanning

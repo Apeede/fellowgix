@@ -234,13 +234,7 @@ const EventAnalyticsPage: React.FC = () => {
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div
                       className="bg-primary-600 h-2 rounded-full"
-                      style={{
-                        width: `${
-                          analytics.guestCount > 0
-                            ? (analytics.returningGuestCount / analytics.guestCount) * 100
-                            : 0
-                        }%`,
-                      }}
+                      style={{ width: `${analytics.guestCount > 0 ? (analytics.returningGuestCount / analytics.guestCount) * 100 : 0}%` } as React.CSSProperties}
                     ></div>
                   </div>
                 </div>
@@ -308,12 +302,7 @@ const EventAnalyticsPage: React.FC = () => {
                     <div className="flex-1 bg-gray-200 h-8 rounded-lg flex items-center">
                       <div
                         className="bg-primary-500 h-8 rounded-lg flex items-center justify-end pr-3 text-white text-sm font-bold"
-                        style={{
-                          width: `${
-                            (count / Math.max(...Object.values(analytics.checkInByHour))) *
-                            100
-                          }%`,
-                        }}
+                        style={{ width: `${(count / Math.max(...Object.values(analytics.checkInByHour))) * 100}%` } as React.CSSProperties}
                       >
                         {count > 0 && count}
                       </div>
