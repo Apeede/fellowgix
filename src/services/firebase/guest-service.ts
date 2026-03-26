@@ -73,8 +73,8 @@ class GuestService {
         isReturningGuest: false,
         visitCount: 1,
       };
-    } catch (error: any) {
-      throw new Error(`Failed to check in guest: ${error.message}`);
+    } catch (error) {
+      throw new Error(`Failed to check in guest: ${(error instanceof Error ? error.message : String(error))}`);
     }
   }
 
@@ -98,8 +98,8 @@ class GuestService {
         createdAt: data.createdAt?.toDate() || new Date(),
         updatedAt: data.updatedAt?.toDate() || new Date(),
       } as Guest;
-    } catch (error: any) {
-      throw new Error(`Failed to get guest: ${error.message}`);
+    } catch (error) {
+      throw new Error(`Failed to get guest: ${(error instanceof Error ? error.message : String(error))}`);
     }
   }
 
@@ -124,8 +124,8 @@ class GuestService {
         createdAt: data.createdAt?.toDate() || new Date(),
         updatedAt: data.updatedAt?.toDate() || new Date(),
       } as Guest;
-    } catch (error: any) {
-      throw new Error(`Failed to get guest by email: ${error.message}`);
+    } catch (error) {
+      throw new Error(`Failed to get guest by email: ${(error instanceof Error ? error.message : String(error))}`);
     }
   }
 
@@ -150,8 +150,8 @@ class GuestService {
         createdAt: data.createdAt?.toDate() || new Date(),
         updatedAt: data.updatedAt?.toDate() || new Date(),
       } as Guest;
-    } catch (error: any) {
-      throw new Error(`Failed to get guest by phone: ${error.message}`);
+    } catch (error) {
+      throw new Error(`Failed to get guest by phone: ${(error instanceof Error ? error.message : String(error))}`);
     }
   }
 
@@ -178,8 +178,8 @@ class GuestService {
           updatedAt: data.updatedAt?.toDate() || new Date(),
         } as Guest;
       });
-    } catch (error: any) {
-      throw new Error(`Failed to search guests: ${error.message}`);
+    } catch (error) {
+      throw new Error(`Failed to search guests: ${(error instanceof Error ? error.message : String(error))}`);
     }
   }
 }

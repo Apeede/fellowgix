@@ -11,7 +11,7 @@ import { db } from './firebase';
 export interface FirestoreCollectionSchema {
   name: string;
   description: string;
-  example: Record<string, any>;
+  example: Record<string, unknown>;
 }
 
 // Define the schema for each collection
@@ -173,10 +173,10 @@ class FirestoreInitService {
         message: 'Database initialized successfully',
         collections: results,
       };
-    } catch (error: any) {
+    } catch (error) {
       return {
         success: false,
-        message: `Failed to initialize database: ${error.message}`,
+        message: `Failed to initialize database: ${(error instanceof Error ? error.message : String(error))}`,
         collections: {},
       };
     }
@@ -219,7 +219,7 @@ class FirestoreInitService {
    */
   static async seedCollection(
     collectionName: string,
-    documents: Record<string, any>[]
+    documents: Record<string, unknown>[]
   ): Promise<{
     success: boolean;
     message: string;
@@ -245,10 +245,10 @@ class FirestoreInitService {
         message: `Successfully seeded ${documents.length} documents to ${collectionName}`,
         count: documents.length,
       };
-    } catch (error: any) {
+    } catch (error) {
       return {
         success: false,
-        message: `Failed to seed collection: ${error.message}`,
+        message: `Failed to seed collection: ${(error instanceof Error ? error.message : String(error))}`,
         count: 0,
       };
     }

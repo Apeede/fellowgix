@@ -41,8 +41,8 @@ class MemberService {
         createdAt: new Date(),
         updatedAt: new Date(),
       };
-    } catch (error: any) {
-      throw new Error(`Failed to create member: ${error.message}`);
+    } catch (error) {
+      throw new Error(`Failed to create member: ${(error instanceof Error ? error.message : String(error))}`);
     }
   }
 
@@ -52,10 +52,10 @@ class MemberService {
   async searchMembers(searchTerm: string): Promise<Member[]> {
     try {
       // Search by email (exact or partial)
-      let constraints = [where('email', '>=', searchTerm), where('email', '<=', searchTerm + '\uf8ff')];
+      const constraints = [where('email', '>=', searchTerm), where('email', '<=', searchTerm + '\uf8ff')];
 
-      let q = query(collection(db, this.collectionName), ...constraints);
-      let querySnapshot = await getDocs(q);
+      const q = query(collection(db, this.collectionName), ...constraints);
+      const querySnapshot = await getDocs(q);
 
       const results = querySnapshot.docs.map((doc) => {
         const data = doc.data();
@@ -91,8 +91,8 @@ class MemberService {
       const unique = Array.from(new Map(combined.map((item) => [item.id, item])).values());
 
       return unique;
-    } catch (error: any) {
-      throw new Error(`Failed to search members: ${error.message}`);
+    } catch (error) {
+      throw new Error(`Failed to search members: ${(error instanceof Error ? error.message : String(error))}`);
     }
   }
 
@@ -116,8 +116,8 @@ class MemberService {
         createdAt: data.createdAt?.toDate() || new Date(),
         updatedAt: data.updatedAt?.toDate() || new Date(),
       } as Member;
-    } catch (error: any) {
-      throw new Error(`Failed to get member: ${error.message}`);
+    } catch (error) {
+      throw new Error(`Failed to get member: ${(error instanceof Error ? error.message : String(error))}`);
     }
   }
 
@@ -142,8 +142,8 @@ class MemberService {
         createdAt: data.createdAt?.toDate() || new Date(),
         updatedAt: data.updatedAt?.toDate() || new Date(),
       } as Member;
-    } catch (error: any) {
-      throw new Error(`Failed to get member by email: ${error.message}`);
+    } catch (error) {
+      throw new Error(`Failed to get member by email: ${(error instanceof Error ? error.message : String(error))}`);
     }
   }
 
@@ -157,8 +157,8 @@ class MemberService {
         ...input,
         updatedAt: Timestamp.now(),
       });
-    } catch (error: any) {
-      throw new Error(`Failed to update member: ${error.message}`);
+    } catch (error) {
+      throw new Error(`Failed to update member: ${(error instanceof Error ? error.message : String(error))}`);
     }
   }
 
@@ -180,8 +180,8 @@ class MemberService {
           updatedAt: data.updatedAt?.toDate() || new Date(),
         } as Member;
       });
-    } catch (error: any) {
-      throw new Error(`Failed to get members: ${error.message}`);
+    } catch (error) {
+      throw new Error(`Failed to get members: ${(error instanceof Error ? error.message : String(error))}`);
     }
   }
 }

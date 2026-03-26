@@ -15,7 +15,7 @@ const MemberCheckInPage: React.FC = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [isCheckingIn, setIsCheckingIn] = useState(false);
-  const [checkInResult, setCheckInResult] = useState<any>(null);
+  const [checkInResult, setCheckInResult] = useState<{ success: boolean; isDuplicate: boolean; message: string } | null>(null);
 
   const handleSearch = async (term: string) => {
     setSearchTerm(term);
@@ -29,7 +29,7 @@ const MemberCheckInPage: React.FC = () => {
     try {
       const results = await memberService.searchMembers(term);
       setSearchResults(results);
-    } catch (error: any) {
+    } catch (error) {
       toast.error('Failed to search members');
       console.error(error);
     } finally {
@@ -81,7 +81,7 @@ const MemberCheckInPage: React.FC = () => {
           });
         }, 1000);
       }
-    } catch (error: any) {
+    } catch (error) {
       toast.error('Check-in failed');
       console.error(error);
     } finally {
@@ -96,7 +96,9 @@ const MemberCheckInPage: React.FC = () => {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center gap-4">
             <button
+              type="button"
               onClick={() => navigate(-1)}
+              aria-label="Go back"
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
             >
               <ArrowLeft className="w-6 h-6 text-gray-700" />
@@ -158,6 +160,7 @@ const MemberCheckInPage: React.FC = () => {
 
             <div className="flex gap-4">
               <button
+                type="button"
                 onClick={() => {
                   setSelectedMember(null);
                   setCheckInResult(null);
@@ -168,6 +171,7 @@ const MemberCheckInPage: React.FC = () => {
                 Change
               </button>
               <button
+                type="button"
                 onClick={handleCheckIn}
                 disabled={isCheckingIn}
                 className="btn-primary flex-1 flex items-center justify-center gap-2"
@@ -191,7 +195,9 @@ const MemberCheckInPage: React.FC = () => {
             <div className="mb-6">
               <div className="relative">
                 <Search className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+                <label htmlFor="member-search" className="sr-only">Search members</label>
                 <input
+                  id="member-search"
                   type="text"
                   value={searchTerm}
                   onChange={(e) => handleSearch(e.target.value)}
@@ -215,6 +221,7 @@ const MemberCheckInPage: React.FC = () => {
               <div className="space-y-2">
                 {searchResults.map((member) => (
                   <button
+                    type="button"
                     key={member.id}
                     onClick={() => handleSelectMember(member)}
                     className="w-full p-4 border border-gray-200 rounded-lg hover:bg-primary-50 hover:border-primary-300 transition-all text-left"
@@ -238,6 +245,7 @@ const MemberCheckInPage: React.FC = () => {
                   If you're not in the system, please contact the organizers
                 </p>
                 <button
+                  type="button"
                   onClick={() => navigate(-1)}
                   className="btn-secondary"
                 >

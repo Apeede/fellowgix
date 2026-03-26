@@ -1,6 +1,6 @@
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import { AlertCircle, ArrowLeft, Loader } from 'lucide-react';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 
@@ -12,7 +12,6 @@ const ScannerPage: React.FC = () => {
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
 
   useEffect(() => {
-    // Check camera permission
     checkCameraPermission();
 
     return () => {
@@ -20,9 +19,9 @@ const ScannerPage: React.FC = () => {
         scannerRef.current.clear();
       }
     };
-  }, []);
+  }, [checkCameraPermission]);
 
-  const checkCameraPermission = async () => {
+  const checkCameraPermission = useCallback(async () => {
     try {
       const devices = await Html5QrcodeScanner.getCameras();
       if (devices && devices.length > 0) {
@@ -35,7 +34,7 @@ const ScannerPage: React.FC = () => {
       setHasCamera(false);
       setError('Camera permission denied or not available');
     }
-  };
+  }, []);
 
   const initializeScanner = () => {
     try {
@@ -77,15 +76,15 @@ const ScannerPage: React.FC = () => {
         setError('Invalid QR code');
         toast.error('Invalid QR code format');
       }
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
       toast.error('Failed to process QR code');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const onScanError = (errorMessage: string) => {
+  const onScanError = () => {
     // Suppress error messages during scanning
     // Only show actual errors, not "No QR found" messages
   };
@@ -97,7 +96,9 @@ const ScannerPage: React.FC = () => {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center gap-4">
             <button
+              type="button"
               onClick={() => navigate('/events')}
+              aria-label="Go back"
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
             >
               <ArrowLeft className="w-6 h-6 text-gray-700" />
@@ -158,7 +159,9 @@ const ScannerPage: React.FC = () => {
                 Can't scan? You can enter the event code manually
               </p>
               <div className="flex gap-2">
+                <label htmlFor="manual-event-id" className="sr-only">Event ID</label>
                 <input
+                  id="manual-event-id"
                   type="text"
                   placeholder="Event ID"
                   className="input-field flex-1"
@@ -172,6 +175,8 @@ const ScannerPage: React.FC = () => {
                   }}
                 />
                 <button
+                  type="button"
+                  title="Go to event check-in"
                   onClick={(e) => {
                     const input = (e.currentTarget.previousElementSibling as HTMLInputElement);
                     const eventId = input.value.trim();

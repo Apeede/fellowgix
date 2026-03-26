@@ -10,7 +10,7 @@ import {
     User as UserIcon,
     Users,
 } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useNavigate, useParams } from 'react-router-dom';
 
@@ -32,13 +32,13 @@ const AttendanceListPage: React.FC = () => {
     if (eventId) {
       loadData();
     }
-  }, [eventId]);
+  }, [eventId, loadData]);
 
   useEffect(() => {
     applyFilters();
-  }, [attendees, searchTerm, filterType]);
+  }, [attendees, searchTerm, filterType, applyFilters]);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setIsLoading(true);
 
@@ -54,15 +54,15 @@ const AttendanceListPage: React.FC = () => {
       // Load attendance list
       const list = await AnalyticsService.getEventAttendanceList(eventId!);
       setAttendees(list);
-    } catch (error: any) {
+    } catch (error) {
       toast.error('Failed to load attendance data');
       console.error(error);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [eventId, navigate]);
 
-  const applyFilters = () => {
+  const applyFilters = useCallback(() => {
     let filtered = attendees;
 
     // Filter by type
@@ -86,7 +86,7 @@ const AttendanceListPage: React.FC = () => {
     }
 
     setFilteredAttendees(filtered);
-  };
+  }, [attendees, searchTerm, filterType]);
 
   const handleExport = async () => {
     if (!eventId) return;
@@ -95,7 +95,7 @@ const AttendanceListPage: React.FC = () => {
     try {
       await AnalyticsService.exportAttendanceAsCSV(eventId, eventName);
       toast.success('Attendance list exported!');
-    } catch (error: any) {
+    } catch (error) {
       toast.error('Failed to export attendance list');
       console.error(error);
     } finally {
@@ -111,7 +111,9 @@ const AttendanceListPage: React.FC = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <button
+                type="button"
                 onClick={() => navigate(-1)}
+                aria-label="Go back"
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
               >
                 <ArrowLeft className="w-6 h-6 text-gray-700" />
@@ -123,6 +125,7 @@ const AttendanceListPage: React.FC = () => {
             </div>
 
             <button
+              type="button"
               onClick={handleExport}
               disabled={isLoading || isExporting || attendees.length === 0}
               className="btn-primary flex items-center gap-2"
@@ -187,7 +190,9 @@ const AttendanceListPage: React.FC = () => {
                 <div className="flex-1 min-w-[250px]">
                   <div className="relative">
                     <Search className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+                    <label htmlFor="attendance-search" className="sr-only">Search attendees</label>
                     <input
+                      id="attendance-search"
                       type="text"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
@@ -199,7 +204,9 @@ const AttendanceListPage: React.FC = () => {
 
                 <div className="flex items-center gap-2">
                   <Filter className="w-5 h-5 text-gray-600" />
+                  <label htmlFor="filter-type" className="sr-only">Filter by type</label>
                   <select
+                    id="filter-type"
                     value={filterType}
                     onChange={(e) => setFilterType(e.target.value as FilterType)}
                     className="input-field"

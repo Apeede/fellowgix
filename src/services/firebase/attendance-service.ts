@@ -62,8 +62,8 @@ class AttendanceService {
         isDuplicate: false,
         message: `Welcome ${personName}! Check-in recorded.`,
       };
-    } catch (error: any) {
-      throw new Error(`Failed to record attendance: ${error.message}`);
+    } catch (error) {
+      throw new Error(`Failed to record attendance: ${(error instanceof Error ? error.message : String(error))}`);
     }
   }
 
@@ -103,7 +103,7 @@ class AttendanceService {
 
       let members = 0;
       let guests = 0;
-      let returningGuests = 0;
+      const returningGuests = 0;
 
       querySnapshot.forEach((doc) => {
         const data = doc.data();
@@ -121,8 +121,8 @@ class AttendanceService {
         guests,
         returningGuests,
       };
-    } catch (error: any) {
-      throw new Error(`Failed to fetch attendance stats: ${error.message}`);
+    } catch (error) {
+      throw new Error(`Failed to fetch attendance stats: ${(error instanceof Error ? error.message : String(error))}`);
     }
   }
 
@@ -147,8 +147,8 @@ class AttendanceService {
           checkedInAt: data.checkedInAt?.toDate() || new Date(),
         } as AttendanceRecord;
       });
-    } catch (error: any) {
-      throw new Error(`Failed to fetch attendance: ${error.message}`);
+    } catch (error) {
+      throw new Error(`Failed to fetch attendance: ${(error instanceof Error ? error.message : String(error))}`);
     }
   }
 
@@ -162,9 +162,11 @@ class AttendanceService {
     try {
       // Note: Would need to use updateDoc from Firebase
       // For now, this is a placeholder
-      console.log(`E-card updated for attendance ${attendanceId}: ${eCardUrl}`);
-    } catch (error: any) {
-      throw new Error(`Failed to update e-card: ${error.message}`);
+      const safeId = attendanceId.replace(/[\r\n]/g, '');
+      const safeUrl = eCardUrl.replace(/[\r\n]/g, '');
+      console.log(`E-card updated for attendance ${safeId}: ${safeUrl}`);
+    } catch (error) {
+      throw new Error(`Failed to update e-card: ${(error instanceof Error ? error.message : String(error))}`);
     }
   }
 }

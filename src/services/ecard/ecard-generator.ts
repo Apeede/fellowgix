@@ -71,7 +71,8 @@ export class ECardGeneratorService {
     `;
 
     // Main card background with gradient
-    const bgColor = data.eventColor || '#6366f1';
+    const colorRegex = /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/;
+    const bgColor = colorRegex.test(data.eventColor) ? data.eventColor : '#6366f1';
     container.innerHTML = `
       <div style="
         width: 100%;
@@ -205,7 +206,7 @@ export class ECardGeneratorService {
    * Generate QR code and embed it in the e-card
    * Note: Currently not used - QR code generation happens separately
    */
-  static async embedQRCode(container: HTMLDivElement, eventId: string): Promise<void> {
+  static async embedQRCode(): Promise<void> {
     // QR code embedding deferred for future enhancement
     // Can implement using dynamic canvas rendering if needed
   }

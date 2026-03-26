@@ -1,4 +1,4 @@
-import { useAuth } from '@context/AuthContext';
+import { useAuth } from '@context/useAuth';
 import { Loader, LogIn } from 'lucide-react';
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
@@ -25,8 +25,8 @@ const LoginPage: React.FC = () => {
       await loginAdmin(email, password);
       toast.success('Login successful!');
       navigate('/dashboard');
-    } catch (err: any) {
-      toast.error(err.message || 'Login failed');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Login failed');
     } finally {
       setIsLoading(false);
     }
@@ -54,10 +54,11 @@ const LoginPage: React.FC = () => {
             )}
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
                 Email Address
               </label>
               <input
+                id="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -68,10 +69,11 @@ const LoginPage: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
                 Password
               </label>
               <input
+                id="password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}

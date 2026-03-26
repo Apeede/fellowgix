@@ -48,8 +48,8 @@ export default function AdminInitPage() {
       } else {
         toast.error(result.message);
       }
-    } catch (error: any) {
-      toast.error(`Failed to initialize database: ${error.message}`);
+    } catch (error) {
+      toast.error(`Failed to initialize database: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setLoading(false);
     }
@@ -81,8 +81,8 @@ export default function AdminInitPage() {
       setPassword('');
       await loadStats();
       
-    } catch (error: any) {
-      toast.error(`Failed to create admin: ${error.message}`);
+    } catch (error) {
+      toast.error(`Failed to create admin: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setLoading(false);
     }
@@ -92,8 +92,8 @@ export default function AdminInitPage() {
     try {
       const dbStats = await FirestoreInitService.getDatabaseStats();
       setStats(dbStats);
-    } catch (error: any) {
-      toast.error(`Failed to load stats: ${error.message}`);
+    } catch (error) {
+      toast.error(`Failed to load stats: ${error instanceof Error ? error.message : String(error)}`);
     }
   };
 
@@ -152,6 +152,7 @@ export default function AdminInitPage() {
               when you add documents, but you can initialize them now.
             </p>
             <button
+              type="button"
               onClick={handleInitializeDB}
               disabled={loading || initialized}
               className={`w-full py-2 px-4 rounded-lg font-semibold transition ${
@@ -174,10 +175,11 @@ export default function AdminInitPage() {
             </h2>
             <form onSubmit={handleCreateAdmin} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="admin-email" className="block text-sm font-medium text-gray-700 mb-1">
                   Admin Email
                 </label>
                 <input
+                  id="admin-email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -187,10 +189,11 @@ export default function AdminInitPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="admin-name" className="block text-sm font-medium text-gray-700 mb-1">
                   Admin Name
                 </label>
                 <input
+                  id="admin-name"
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
@@ -200,10 +203,11 @@ export default function AdminInitPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="admin-password" className="block text-sm font-medium text-gray-700 mb-1">
                   Password (min 8 chars)
                 </label>
                 <input
+                  id="admin-password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}

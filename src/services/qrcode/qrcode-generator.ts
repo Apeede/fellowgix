@@ -47,8 +47,8 @@ class QRCodeGeneratorService {
       });
 
       return qrDataUrl;
-    } catch (error: any) {
-      throw new Error(`Failed to generate QR code: ${error.message}`);
+    } catch (error) {
+      throw new Error(`Failed to generate QR code: ${(error instanceof Error ? error.message : String(error))}`);
     }
   }
 
@@ -70,8 +70,8 @@ class QRCodeGeneratorService {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-    } catch (error: any) {
-      throw new Error(`Failed to download QR code: ${error.message}`);
+    } catch (error) {
+      throw new Error(`Failed to download QR code: ${(error instanceof Error ? error.message : String(error))}`);
     }
   }
 
@@ -95,8 +95,8 @@ class QRCodeGeneratorService {
         },
       });
       return canvas;
-    } catch (error: any) {
-      throw new Error(`Failed to generate QR code canvas: ${error.message}`);
+    } catch (error) {
+      throw new Error(`Failed to generate QR code canvas: ${(error instanceof Error ? error.message : String(error))}`);
     }
   }
 }

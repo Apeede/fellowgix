@@ -1,27 +1,14 @@
-import { Admin, authService } from '@services/firebase/auth-service';
+import { authService } from '@services/firebase/auth-service';
 import { User } from 'firebase/auth';
-import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
-
-interface AuthContextType {
-  currentUser: User | null;
-  currentAdmin: Admin | null;
-  loading: boolean;
-  error: string | null;
-  loginAdmin: (email: string, password: string) => Promise<void>;
-  registerAdmin: (email: string, password: string, name: string) => Promise<void>;
-  signOut: () => Promise<void>;
-  clearError: () => void;
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+import React, { useCallback, useEffect, useState } from 'react';
+import { AuthContext, AuthContextType } from './AuthContextType';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [currentAdmin, setCurrentAdmin] = useState<Admin | null>(null);
+  const [currentAdmin, setCurrentAdmin] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Subscribe to auth state changes
   useEffect(() => {
     const unsubscribe = authService.onAuthStateChange(async (user) => {
       setCurrentUser(user);
@@ -49,8 +36,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setError(null);
       const admin = await authService.loginAdmin(email, password);
       setCurrentAdmin(admin);
-    } catch (err: any) {
-      const errorMessage = err.message || 'Failed to login';
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to login';
       setError(errorMessage);
       throw new Error(errorMessage);
     }
@@ -61,8 +48,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setError(null);
       const admin = await authService.registerAdmin(email, password, name);
       setCurrentAdmin(admin);
-    } catch (err: any) {
-      const errorMessage = err.message || 'Failed to register';
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to register';
       setError(errorMessage);
       throw new Error(errorMessage);
     }
@@ -74,8 +61,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await authService.signOut();
       setCurrentUser(null);
       setCurrentAdmin(null);
-    } catch (err: any) {
-      const errorMessage = err.message || 'Failed to sign out';
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to sign out';
       setError(errorMessage);
       throw new Error(errorMessage);
     }
@@ -97,12 +84,4 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-};
-
-export const useAuth = (): AuthContextType => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
 };

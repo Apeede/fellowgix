@@ -2,7 +2,7 @@ import { eventService } from '@services/firebase/event-service';
 import { qrCodeGeneratorService } from '@services/qrcode/qrcode-generator';
 import { Event } from '@types/event';
 import { ArrowLeft, Download, Eye, EyeOff, Loader } from 'lucide-react';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 
@@ -13,7 +13,7 @@ const EventQRCodePage: React.FC = () => {
   const printRef = useRef<HTMLDivElement>(null);
 
   const [event, setEvent] = useState<Event | null>(
-    (location.state as any)?.event || null
+    (location.state as { event?: Event })?.event ?? null
   );
   const [isLoading, setIsLoading] = useState(!event);
   const [showDetails, setShowDetails] = useState(true);
@@ -23,9 +23,9 @@ const EventQRCodePage: React.FC = () => {
     if (!event && eventId) {
       loadEvent();
     }
-  }, [eventId, event]);
+  }, [eventId, event, loadEvent]);
 
-  const loadEvent = async () => {
+  const loadEvent = useCallback(async () => {
     if (!eventId) return;
 
     setIsLoading(true);
@@ -37,13 +37,13 @@ const EventQRCodePage: React.FC = () => {
         toast.error('Event not found');
         navigate('/events');
       }
-    } catch (error: any) {
+    } catch (error) {
       toast.error('Failed to load event');
       console.error(error);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [eventId, navigate]);
 
   const handleDownload = async () => {
     if (!event) return;
@@ -51,7 +51,7 @@ const EventQRCodePage: React.FC = () => {
     try {
       await qrCodeGeneratorService.downloadQRCode(event.qrCode, event.name);
       toast.success('QR Code downloaded!');
-    } catch (error: any) {
+    } catch (error) {
       toast.error('Failed to download QR code');
       console.error(error);
     }
@@ -82,7 +82,9 @@ const EventQRCodePage: React.FC = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <button
+                type="button"
                 onClick={() => navigate('/events')}
+                aria-label="Go back"
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
               >
                 <ArrowLeft className="w-6 h-6 text-gray-700" />
@@ -90,6 +92,7 @@ const EventQRCodePage: React.FC = () => {
               <h1 className="text-2xl font-bold text-gray-900">Event QR Code</h1>
             </div>
             <button
+              type="button"
               onClick={() => setShowDetails(!showDetails)}
               className="btn-secondary flex items-center gap-2 py-2"
             >
@@ -216,6 +219,7 @@ const EventQRCodePage: React.FC = () => {
             {/* Action Buttons */}
             <div className="flex gap-4">
               <button
+                type="button"
                 onClick={handlePrint}
                 className="btn-primary flex-1 py-3 flex items-center justify-center gap-2"
               >
@@ -235,6 +239,7 @@ const EventQRCodePage: React.FC = () => {
                 Print QR Code
               </button>
               <button
+                type="button"
                 onClick={handleDownload}
                 className="btn-secondary flex-1 py-3 flex items-center justify-center gap-2"
               >

@@ -1,8 +1,8 @@
-import { useAuth } from '@context/AuthContext';
+import { useAuth } from '@context/useAuth';
 import { eventService } from '@services/firebase/event-service';
 import { EventStats } from '@types/event';
 import { BarChart3, Calendar, LogOut, Plus, TrendingUp, Users } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 
@@ -12,30 +12,30 @@ const DashboardPage: React.FC = () => {
   const [stats, setStats] = useState<EventStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    loadStats();
-  }, [currentAdmin]);
-
-  const loadStats = async () => {
+  const loadStats = useCallback(async () => {
     if (!currentAdmin) return;
 
     try {
       const data = await eventService.getEventStats(currentAdmin.id);
       setStats(data);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Failed to load stats:', error);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [currentAdmin]);
+
+  useEffect(() => {
+    loadStats();
+  }, [currentAdmin, loadStats]);
 
   const handleSignOut = async () => {
     try {
       await signOut();
       toast.success('Logged out successfully');
       navigate('/login');
-    } catch (error: any) {
-      toast.error(error.message);
+    } catch (error) {
+      toast.error((error instanceof Error ? error.message : String(error)));
     }
   };
 
@@ -55,6 +55,7 @@ const DashboardPage: React.FC = () => {
                 <p className="text-xs text-gray-500">{currentAdmin?.email}</p>
               </div>
               <button
+                type="button"
                 onClick={handleSignOut}
                 className="btn-outline flex items-center gap-2 py-2"
               >
@@ -153,7 +154,7 @@ const DashboardPage: React.FC = () => {
               </div>
               <Calendar className="w-8 h-8 text-primary-600" />
             </div>
-            <button className="btn-primary mt-4 flex items-center gap-2 w-full justify-center">
+            <button type="button" className="btn-primary mt-4 flex items-center gap-2 w-full justify-center">
               <Plus className="w-4 h-4" />
               View Events
             </button>
@@ -170,7 +171,7 @@ const DashboardPage: React.FC = () => {
               </div>
               <BarChart3 className="w-8 h-8 text-gray-400" />
             </div>
-            <button className="btn-secondary mt-4 flex items-center gap-2 w-full justify-center" disabled>
+            <button type="button" className="btn-secondary mt-4 flex items-center gap-2 w-full justify-center" disabled>
               Coming Soon
             </button>
           </div>
@@ -181,6 +182,7 @@ const DashboardPage: React.FC = () => {
           <h3 className="text-lg font-bold text-gray-900 mb-6">Quick Links</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <button
+              type="button"
               onClick={() => navigate('/events/create')}
               className="p-4 border-2 border-gray-200 rounded-lg hover:border-primary-600 hover:bg-primary-50 transition-all text-left"
             >
@@ -194,6 +196,7 @@ const DashboardPage: React.FC = () => {
             </button>
 
             <button
+              type="button"
               onClick={() => navigate('/events')}
               className="p-4 border-2 border-gray-200 rounded-lg hover:border-primary-600 hover:bg-primary-50 transition-all text-left"
             >
@@ -206,7 +209,7 @@ const DashboardPage: React.FC = () => {
               </div>
             </button>
 
-            <button className="p-4 border-2 border-gray-200 rounded-lg opacity-50 cursor-not-allowed text-left">
+            <button type="button" className="p-4 border-2 border-gray-200 rounded-lg opacity-50 cursor-not-allowed text-left" disabled>
               <div className="flex items-center gap-3">
                 <BarChart3 className="w-5 h-5 text-gray-400" />
                 <div>

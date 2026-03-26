@@ -1,4 +1,4 @@
-import { useAuth } from '@context/AuthContext';
+import { useAuth } from '@context/useAuth';
 import { eventService } from '@services/firebase/event-service';
 import { qrCodeGeneratorService } from '@services/qrcode/qrcode-generator';
 import { Event } from '@types/event';
@@ -14,7 +14,7 @@ import {
     Trash2,
     User,
 } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useLocation, useNavigate } from 'react-router-dom';
 
@@ -28,21 +28,7 @@ const EventsPage: React.FC = () => {
   const [filter, setFilter] = useState<'all' | 'active' | 'upcoming'>('upcoming');
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
 
-  // Fetch events on mount and when filter changes
-  useEffect(() => {
-    loadEvents();
-  }, [filter]);
-
-  // Highlight new event if created
-  useEffect(() => {
-    const state = location.state as any;
-    if (state?.newEventId) {
-      setSelectedEventId(state.newEventId);
-      setTimeout(() => setSelectedEventId(null), 3000);
-    }
-  }, [location.state]);
-
-  const loadEvents = async () => {
+  const loadEvents = useCallback(async () => {
     if (!currentAdmin) return;
 
     setIsLoading(true);
@@ -54,19 +40,33 @@ const EventsPage: React.FC = () => {
         data = await eventService.getEventsByAdmin(currentAdmin.id, filter === 'all');
       }
       setEvents(data);
-    } catch (error: any) {
+    } catch (error) {
       toast.error('Failed to load events');
       console.error(error);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [currentAdmin, filter]);
+
+  // Fetch events on mount and when filter changes
+  useEffect(() => {
+    loadEvents();
+  }, [filter, loadEvents]);
+
+  // Highlight new event if created
+  useEffect(() => {
+    const state = location.state as { newEventId?: string } | null;
+    if (state?.newEventId) {
+      setSelectedEventId(state.newEventId);
+      setTimeout(() => setSelectedEventId(null), 3000);
+    }
+  }, [location.state]);
 
   const handleDownloadQR = async (event: Event) => {
     try {
       await qrCodeGeneratorService.downloadQRCode(event.qrCode, event.name);
       toast.success('QR Code downloaded!');
-    } catch (error: any) {
+    } catch (error) {
       toast.error('Failed to download QR code');
       console.error(error);
     }
@@ -81,7 +81,7 @@ const EventsPage: React.FC = () => {
       await eventService.deleteEvent(eventId);
       setEvents(events.filter((e) => e.id !== eventId));
       toast.success('Event deleted successfully');
-    } catch (error: any) {
+    } catch (error) {
       toast.error('Failed to delete event');
       console.error(error);
     }
@@ -99,6 +99,7 @@ const EventsPage: React.FC = () => {
           <div className="flex justify-between items-center">
             <h1 className="text-3xl font-bold text-gray-900">Events</h1>
             <button
+              type="button"
               onClick={() => navigate('/events/create')}
               className="btn-primary flex items-center gap-2"
             >
@@ -115,6 +116,7 @@ const EventsPage: React.FC = () => {
           <div className="flex gap-8">
             {(['upcoming', 'active', 'all'] as const).map((tab) => (
               <button
+                type="button"
                 key={tab}
                 onClick={() => setFilter(tab)}
                 className={`py-4 px-1 border-b-2 font-medium text-sm capitalize transition-colors ${
@@ -150,6 +152,7 @@ const EventsPage: React.FC = () => {
             </p>
             {filter === 'upcoming' && (
               <button
+                type="button"
                 onClick={() => navigate('/events/create')}
                 className="btn-primary inline-flex items-center gap-2"
               >
@@ -229,6 +232,7 @@ const EventsPage: React.FC = () => {
                     {/* Action Buttons */}
                     <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
                       <button
+                        type="button"
                         onClick={() => navigate(`/events/${event.id}/analytics`)}
                         className="btn-primary flex items-center justify-center gap-2 py-2 px-3 text-sm"
                         title="View analytics"
@@ -237,6 +241,7 @@ const EventsPage: React.FC = () => {
                         Analytics
                       </button>
                       <button
+                        type="button"
                         onClick={() => handleViewQR(event)}
                         className="btn-outline flex items-center justify-center gap-2 py-2 px-3 text-sm"
                         title="View full QR code"
@@ -245,6 +250,7 @@ const EventsPage: React.FC = () => {
                         View QR
                       </button>
                       <button
+                        type="button"
                         onClick={() => handleDownloadQR(event)}
                         className="btn-outline flex items-center justify-center gap-2 py-2 px-3 text-sm"
                         title="Download QR code"
@@ -253,6 +259,7 @@ const EventsPage: React.FC = () => {
                         Download
                       </button>
                       <button
+                        type="button"
                         onClick={() => navigate(`/events/${event.id}/edit`)}
                         className="btn-outline flex items-center justify-center gap-2 py-2 px-3 text-sm"
                         title="Edit event"
@@ -261,6 +268,7 @@ const EventsPage: React.FC = () => {
                         Edit
                       </button>
                       <button
+                        type="button"
                         onClick={() => handleDeleteEvent(event.id, event.name)}
                         className="flex items-center justify-center gap-2 py-2 px-3 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors"
                         title="Delete event"

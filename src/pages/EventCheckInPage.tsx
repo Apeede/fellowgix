@@ -1,7 +1,7 @@
 import { eventService } from '@services/firebase/event-service';
 import { Event } from '@types/event';
 import { AlertCircle, ArrowLeft, Loader, User, Users } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useNavigate, useParams } from 'react-router-dom';
 
@@ -14,9 +14,9 @@ const EventCheckInPage: React.FC = () => {
 
   useEffect(() => {
     loadEvent();
-  }, [eventId]);
+  }, [eventId, loadEvent]);
 
-  const loadEvent = async () => {
+  const loadEvent = useCallback(async () => {
     if (!eventId) {
       toast.error('Event not found');
       navigate('/');
@@ -31,14 +31,14 @@ const EventCheckInPage: React.FC = () => {
         toast.error('Event not found or is inactive');
         navigate('/');
       }
-    } catch (error: any) {
+    } catch (error) {
       toast.error('Failed to load event');
       console.error(error);
       navigate('/');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [eventId, navigate]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100">
@@ -47,7 +47,9 @@ const EventCheckInPage: React.FC = () => {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center gap-4">
             <button
+              type="button"
               onClick={() => navigate('/scan')}
+              aria-label="Go back"
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
             >
               <ArrowLeft className="w-6 h-6 text-gray-700" />
@@ -95,6 +97,7 @@ const EventCheckInPage: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 {/* Member Button */}
                 <button
+                  type="button"
                   onClick={() => navigate(`/events/${eventId}/checkin/member`)}
                   className="card hover:shadow-2xl hover:border-primary-600 transition-all transform hover:-translate-y-1 cursor-pointer border-2 border-transparent group"
                 >
@@ -111,6 +114,7 @@ const EventCheckInPage: React.FC = () => {
 
                 {/* Guest Button */}
                 <button
+                  type="button"
                   onClick={() => navigate(`/events/${eventId}/checkin/guest`)}
                   className="card hover:shadow-2xl hover:border-primary-600 transition-all transform hover:-translate-y-1 cursor-pointer border-2 border-transparent group"
                 >
@@ -153,6 +157,7 @@ const EventCheckInPage: React.FC = () => {
             {/* Back to Scan */}
             <div className="text-center">
               <button
+                type="button"
                 onClick={() => navigate('/scan')}
                 className="text-primary-600 hover:text-primary-700 font-medium underline"
               >
@@ -166,6 +171,7 @@ const EventCheckInPage: React.FC = () => {
             <h3 className="text-lg font-semibold text-gray-900 mb-2">Event Not Found</h3>
             <p className="text-gray-600 mb-6">The event you're looking for doesn't exist or is inactive.</p>
             <button
+              type="button"
               onClick={() => navigate('/scan')}
               className="btn-primary"
             >

@@ -1,7 +1,7 @@
 import { ECardData, ECardGeneratorService } from '@services/ecard/ecard-generator';
 import { eventService } from '@services/firebase/event-service';
 import { ArrowLeft, Download, Loader, Share2 } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useLocation, useNavigate } from 'react-router-dom';
 
@@ -14,12 +14,19 @@ interface LocationState {
   club?: string;
 }
 
+interface EventDetails {
+  id: string;
+  name: string;
+  date: string;
+  theme?: string;
+}
+
 const ECardPage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   
   const state = location.state as LocationState;
-  const [eventDetails, setEventDetails] = useState<any>(null);
+  const [eventDetails, setEventDetails] = useState<EventDetails | null>(null);
   const [eCardImage, setECardImage] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -33,9 +40,9 @@ const ECardPage: React.FC = () => {
     }
 
     loadEventAndGenerateECard();
-  }, []);
+  }, [state?.eventId, state?.attendeeName, navigate, loadEventAndGenerateECard]);
 
-  const loadEventAndGenerateECard = async () => {
+  const loadEventAndGenerateECard = useCallback(async () => {
     try {
       setIsGenerating(true);
 
@@ -73,13 +80,13 @@ const ECardPage: React.FC = () => {
 
       const { dataUrl } = await ECardGeneratorService.generateECard(eCardData);
       setECardImage(dataUrl);
-    } catch (error: any) {
+    } catch (error) {
       toast.error('Failed to generate e-card');
       console.error(error);
     } finally {
       setIsGenerating(false);
     }
-  };
+  }, [state?.eventId, state?.attendeeName, state?.attendeeEmail, state?.attendeePhone, state?.club, state?.type, navigate]);
 
   const handleDownload = async () => {
     if (!eCardImage) return;
@@ -122,7 +129,7 @@ const ECardPage: React.FC = () => {
         // Fallback: copy to clipboard message
         toast.success('Share not available on this device');
       }
-    } catch (error: any) {
+    } catch (error) {
       if (error.name !== 'AbortError') {
         console.error('Share error:', error);
       }
@@ -140,7 +147,9 @@ const ECardPage: React.FC = () => {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <button
+              type="button"
               onClick={() => navigate(-1)}
+              aria-label="Go back"
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
             >
               <ArrowLeft className="w-6 h-6 text-gray-700" />
@@ -196,6 +205,7 @@ const ECardPage: React.FC = () => {
             {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row gap-4">
               <button
+                type="button"
                 onClick={handleDownload}
                 disabled={isDownloading}
                 className="btn-primary flex items-center justify-center gap-2 flex-1"
@@ -209,6 +219,7 @@ const ECardPage: React.FC = () => {
               </button>
 
               <button
+                type="button"
                 onClick={handleShare}
                 className="btn-secondary flex items-center justify-center gap-2 flex-1"
               >
@@ -217,6 +228,7 @@ const ECardPage: React.FC = () => {
               </button>
 
               <button
+                type="button"
                 onClick={handleBackToScanner}
                 className="btn-secondary flex items-center justify-center gap-2 flex-1"
               >
@@ -237,7 +249,7 @@ const ECardPage: React.FC = () => {
           // Error State
           <div className="card text-center py-12">
             <p className="text-gray-600 mb-6">Failed to generate e-card</p>
-            <button onClick={handleBackToScanner} className="btn-primary">
+            <button type="button" onClick={handleBackToScanner} className="btn-primary">
               Back to Scanner
             </button>
           </div>

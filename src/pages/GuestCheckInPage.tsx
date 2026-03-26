@@ -5,6 +5,14 @@ import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import { useNavigate, useParams } from 'react-router-dom';
 
+interface CheckInResult {
+  success: boolean;
+  isDuplicate: boolean;
+  message: string;
+  isReturningGuest: boolean;
+  visitCount: number;
+}
+
 const GuestCheckInPage: React.FC = () => {
   const { eventId } = useParams<{ eventId: string }>();
   const navigate = useNavigate();
@@ -19,7 +27,7 @@ const GuestCheckInPage: React.FC = () => {
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [checkInResult, setCheckInResult] = useState<any>(null);
+  const [checkInResult, setCheckInResult] = useState<CheckInResult | null>(null);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -112,8 +120,8 @@ const GuestCheckInPage: React.FC = () => {
           });
         }, 1000);
       }
-    } catch (error: any) {
-      toast.error(error.message || 'Check-in failed');
+    } catch (error) {
+      toast.error((error instanceof Error ? error.message : String(error)) || 'Check-in failed');
       console.error(error);
     } finally {
       setIsSubmitting(false);
@@ -127,7 +135,9 @@ const GuestCheckInPage: React.FC = () => {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center gap-4">
             <button
+              type="button"
               onClick={() => navigate(-1)}
+              aria-label="Go back"
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
             >
               <ArrowLeft className="w-6 h-6 text-gray-700" />
@@ -169,10 +179,11 @@ const GuestCheckInPage: React.FC = () => {
             <form onSubmit={handleSubmit} className="space-y-5">
               {/* Name */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="guest-name" className="block text-sm font-medium text-gray-700 mb-2">
                   Full Name <span className="text-red-500">*</span>
                 </label>
                 <input
+                  id="guest-name"
                   type="text"
                   name="name"
                   value={formData.name}
@@ -186,10 +197,11 @@ const GuestCheckInPage: React.FC = () => {
 
               {/* Email */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="guest-email" className="block text-sm font-medium text-gray-700 mb-2">
                   Email <span className="text-red-500">*</span>
                 </label>
                 <input
+                  id="guest-email"
                   type="email"
                   name="email"
                   value={formData.email}
@@ -203,10 +215,11 @@ const GuestCheckInPage: React.FC = () => {
 
               {/* Phone */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="guest-phone" className="block text-sm font-medium text-gray-700 mb-2">
                   Phone <span className="text-red-500">*</span>
                 </label>
                 <input
+                  id="guest-phone"
                   type="tel"
                   name="phone"
                   value={formData.phone}
@@ -220,10 +233,11 @@ const GuestCheckInPage: React.FC = () => {
 
               {/* Guest Type */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="type" className="block text-sm font-medium text-gray-700 mb-2">
                   Affiliation <span className="text-red-500">*</span>
                 </label>
                 <select
+                  id="type"
                   name="type"
                   value={formData.type}
                   onChange={handleChange}
@@ -239,10 +253,11 @@ const GuestCheckInPage: React.FC = () => {
               {/* Club (conditional) */}
               {(formData.type === 'rotarian' || formData.type === 'rotaractor') && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="club" className="block text-sm font-medium text-gray-700 mb-2">
                     Club Name <span className="text-red-500">*</span>
                   </label>
                   <input
+                    id="club"
                     type="text"
                     name="club"
                     value={formData.club}

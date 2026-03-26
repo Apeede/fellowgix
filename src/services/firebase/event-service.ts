@@ -54,8 +54,8 @@ class EventService {
         createdAt: new Date(),
         updatedAt: new Date(),
       };
-    } catch (error: any) {
-      throw new Error(`Failed to create event: ${error.message}`);
+    } catch (error) {
+      throw new Error(`Failed to create event: ${(error instanceof Error ? error.message : String(error))}`);
     }
   }
 
@@ -64,7 +64,7 @@ class EventService {
    */
   async getEventsByAdmin(adminId: string, includeInactive = false): Promise<Event[]> {
     try {
-      let constraints: QueryConstraint[] = [where('createdBy', '==', adminId)];
+      const constraints: QueryConstraint[] = [where('createdBy', '==', adminId)];
 
       if (!includeInactive) {
         constraints.push(where('isActive', '==', true));
@@ -84,8 +84,8 @@ class EventService {
           updatedAt: data.updatedAt?.toDate() || new Date(),
         } as Event;
       });
-    } catch (error: any) {
-      throw new Error(`Failed to fetch events: ${error.message}`);
+    } catch (error) {
+      throw new Error(`Failed to fetch events: ${(error instanceof Error ? error.message : String(error))}`);
     }
   }
 
@@ -114,8 +114,8 @@ class EventService {
           updatedAt: data.updatedAt?.toDate() || new Date(),
         } as Event;
       });
-    } catch (error: any) {
-      throw new Error(`Failed to fetch upcoming events: ${error.message}`);
+    } catch (error) {
+      throw new Error(`Failed to fetch upcoming events: ${(error instanceof Error ? error.message : String(error))}`);
     }
   }
 
@@ -138,8 +138,8 @@ class EventService {
         createdAt: data.createdAt?.toDate() || new Date(),
         updatedAt: data.updatedAt?.toDate() || new Date(),
       } as Event;
-    } catch (error: any) {
-      throw new Error(`Failed to fetch event: ${error.message}`);
+    } catch (error) {
+      throw new Error(`Failed to fetch event: ${(error instanceof Error ? error.message : String(error))}`);
     }
   }
 
@@ -149,7 +149,7 @@ class EventService {
   async updateEvent(eventId: string, input: UpdateEventInput): Promise<void> {
     try {
       const docRef = doc(db, this.collectionName, eventId);
-      const updateData: any = { ...input, updatedAt: Timestamp.now() };
+      const updateData: Record<string, unknown> = { ...input, updatedAt: Timestamp.now() };
 
       // If date changed, regenerate QR code
       if (input.date) {
@@ -161,8 +161,8 @@ class EventService {
       }
 
       await updateDoc(docRef, updateData);
-    } catch (error: any) {
-      throw new Error(`Failed to update event: ${error.message}`);
+    } catch (error) {
+      throw new Error(`Failed to update event: ${(error instanceof Error ? error.message : String(error))}`);
     }
   }
 
@@ -176,8 +176,8 @@ class EventService {
         isActive: false,
         updatedAt: Timestamp.now(),
       });
-    } catch (error: any) {
-      throw new Error(`Failed to delete event: ${error.message}`);
+    } catch (error) {
+      throw new Error(`Failed to delete event: ${(error instanceof Error ? error.message : String(error))}`);
     }
   }
 
@@ -200,8 +200,8 @@ class EventService {
         upcomingEvents: upcoming.length,
         totalAttendance: 0, // Will be calculated from attendance collection
       };
-    } catch (error: any) {
-      throw new Error(`Failed to fetch event stats: ${error.message}`);
+    } catch (error) {
+      throw new Error(`Failed to fetch event stats: ${(error instanceof Error ? error.message : String(error))}`);
     }
   }
 
@@ -217,8 +217,8 @@ class EventService {
         updatedAt: Timestamp.now(),
       });
       return newQRCode;
-    } catch (error: any) {
-      throw new Error(`Failed to regenerate QR code: ${error.message}`);
+    } catch (error) {
+      throw new Error(`Failed to regenerate QR code: ${(error instanceof Error ? error.message : String(error))}`);
     }
   }
 }

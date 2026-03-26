@@ -12,7 +12,7 @@ import {
     User as UserIcon,
     Users
 } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useNavigate, useParams } from 'react-router-dom';
 
@@ -20,7 +20,7 @@ const EventAnalyticsPage: React.FC = () => {
   const { eventId } = useParams<{ eventId: string }>();
   const navigate = useNavigate();
 
-  const [event, setEvent] = useState<any>(null);
+  const [event, setEvent] = useState<Record<string, unknown> | null>(null);
   const [analytics, setAnalytics] = useState<AttendanceAnalytics | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -28,9 +28,9 @@ const EventAnalyticsPage: React.FC = () => {
     if (eventId) {
       loadData();
     }
-  }, [eventId]);
+  }, [eventId, loadData]);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setIsLoading(true);
 
@@ -46,13 +46,13 @@ const EventAnalyticsPage: React.FC = () => {
       // Load analytics
       const analyticsData = await AnalyticsService.getEventAnalytics(eventId!);
       setAnalytics(analyticsData);
-    } catch (error: any) {
+    } catch (error) {
       toast.error('Failed to load analytics');
       console.error(error);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [eventId, navigate]);
 
   const handleViewAttendees = () => {
     navigate(`/events/${eventId}/attendance`, { replace: false });
@@ -75,6 +75,7 @@ const EventAnalyticsPage: React.FC = () => {
         <div className="card text-center">
           <p className="text-gray-600">Failed to load analytics data</p>
           <button
+            type="button"
             onClick={() => navigate('/events', { replace: true })}
             className="btn-secondary mt-6"
           >
@@ -108,7 +109,9 @@ const EventAnalyticsPage: React.FC = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <button
+                type="button"
                 onClick={() => navigate(-1)}
+                aria-label="Go back"
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
               >
                 <ArrowLeft className="w-6 h-6 text-gray-700" />
@@ -120,6 +123,7 @@ const EventAnalyticsPage: React.FC = () => {
             </div>
 
             <button
+              type="button"
               onClick={handleViewAttendees}
               className="btn-primary flex items-center gap-2"
             >

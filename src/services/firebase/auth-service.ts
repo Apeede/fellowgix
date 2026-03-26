@@ -49,8 +49,8 @@ class AuthService {
       });
 
       return adminData;
-    } catch (error: any) {
-      throw new Error(`Failed to register admin: ${error.message}`);
+    } catch (error) {
+      throw new Error(`Failed to register admin: ${(error instanceof Error ? error.message : String(error))}`);
     }
   }
 
@@ -85,8 +85,8 @@ class AuthService {
       );
 
       return adminData;
-    } catch (error: any) {
-      throw new Error(`Login failed: ${error.message}`);
+    } catch (error) {
+      throw new Error(`Login failed: ${(error instanceof Error ? error.message : String(error))}`);
     }
   }
 
@@ -124,8 +124,8 @@ class AuthService {
   async signOut(): Promise<void> {
     try {
       await firebaseSignOut(auth);
-    } catch (error: any) {
-      throw new Error(`Sign out failed: ${error.message}`);
+    } catch (error) {
+      throw new Error(`Sign out failed: ${(error instanceof Error ? error.message : String(error))}`);
     }
   }
 

@@ -1,4 +1,4 @@
-import { useAuth } from '@context/AuthContext';
+import { useAuth } from '@context/useAuth';
 import { eventService } from '@services/firebase/event-service';
 import { AlertCircle, ArrowLeft, Loader } from 'lucide-react';
 import React, { useState } from 'react';
@@ -87,8 +87,8 @@ const CreateEventPage: React.FC = () => {
       const event = await eventService.createEvent(formData, currentAdmin.id);
       toast.success(`Event "${event.name}" created successfully!`);
       navigate('/events', { state: { newEventId: event.id } });
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to create event');
+    } catch (error) {
+      toast.error((error instanceof Error ? error.message : String(error)) || 'Failed to create event');
       console.error('Event creation error:', error);
     } finally {
       setIsLoading(false);
@@ -102,7 +102,9 @@ const CreateEventPage: React.FC = () => {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center gap-4">
             <button
+              type="button"
               onClick={() => navigate('/events')}
+              aria-label="Go back"
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
             >
               <ArrowLeft className="w-6 h-6 text-gray-700" />
@@ -120,10 +122,11 @@ const CreateEventPage: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Event Name */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
                   Event Name <span className="text-red-500">*</span>
                 </label>
                 <input
+                  id="name"
                   type="text"
                   name="name"
                   value={formData.name}
@@ -142,10 +145,11 @@ const CreateEventPage: React.FC = () => {
 
               {/* Event Date */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-2">
                   Event Date <span className="text-red-500">*</span>
                 </label>
                 <input
+                  id="date"
                   type="date"
                   name="date"
                   value={formData.date}
@@ -163,10 +167,11 @@ const CreateEventPage: React.FC = () => {
 
               {/* Event Time */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="time" className="block text-sm font-medium text-gray-700 mb-2">
                   Event Time
                 </label>
                 <input
+                  id="time"
                   type="time"
                   name="time"
                   value={formData.time}
@@ -178,10 +183,11 @@ const CreateEventPage: React.FC = () => {
 
               {/* Theme */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="theme" className="block text-sm font-medium text-gray-700 mb-2">
                   Theme <span className="text-red-500">*</span>
                 </label>
                 <input
+                  id="theme"
                   type="text"
                   name="theme"
                   value={formData.theme}
@@ -200,10 +206,11 @@ const CreateEventPage: React.FC = () => {
 
               {/* Speaker */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="speaker" className="block text-sm font-medium text-gray-700 mb-2">
                   Speaker <span className="text-red-500">*</span>
                 </label>
                 <input
+                  id="speaker"
                   type="text"
                   name="speaker"
                   value={formData.speaker}
@@ -222,10 +229,11 @@ const CreateEventPage: React.FC = () => {
 
               {/* Location */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-2">
                   Location
                 </label>
                 <input
+                  id="location"
                   type="text"
                   name="location"
                   value={formData.location}
@@ -239,10 +247,11 @@ const CreateEventPage: React.FC = () => {
 
             {/* Description */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
                 Description
               </label>
               <textarea
+                id="description"
                 name="description"
                 value={formData.description}
                 onChange={handleChange}
