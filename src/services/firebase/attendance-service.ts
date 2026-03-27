@@ -3,12 +3,15 @@ import {
     Timestamp,
     addDoc,
     collection,
+    doc,
     getDocs,
     orderBy,
     query,
+    updateDoc,
     where,
 } from 'firebase/firestore';
 import { db } from './firebase';
+import { firestoreTimestampToDate, getTimestampMinutesAgo } from './firestore-utils';
 
 class AttendanceService {
   private collectionName = 'attendance';
@@ -76,14 +79,14 @@ class AttendanceService {
     personId: string
   ): Promise<boolean> {
     try {
-      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+      const fiveMinutesAgo = getTimestampMinutesAgo(5);
 
       const q = query(
         collection(db, this.collectionName),
         where('eventId', '==', eventId),
         where('type', '==', type),
         where('personId', '==', personId),
-        where('checkedInAt', '>=', Timestamp.fromDate(fiveMinutesAgo))
+        where('checkedInAt', '>=', fiveMinutesAgo)
       );
 
       const querySnapshot = await getDocs(q);
@@ -139,14 +142,11 @@ class AttendanceService {
 
       const querySnapshot = await getDocs(q);
 
-      return querySnapshot.docs.map((doc) => {
-        const data = doc.data();
-        return {
-          ...data,
-          id: doc.id,
-          checkedInAt: data.checkedInAt?.toDate() || new Date(),
-        } as AttendanceRecord;
-      });
+      return querySnapshot.docs.map((doc) => ({
+        ...doc.data(),
+        id: doc.id,
+        checkedInAt: firestoreTimestampToDate(doc.data().checkedInAt),
+      })) as AttendanceRecord[];
     } catch (error) {
       throw new Error(`Failed to fetch attendance: ${(error instanceof Error ? error.message : String(error))}`);
     }
@@ -160,11 +160,12 @@ class AttendanceService {
     eCardUrl: string
   ): Promise<void> {
     try {
-      // Note: Would need to use updateDoc from Firebase
-      // For now, this is a placeholder
-      const safeId = attendanceId.replace(/[\r\n]/g, '');
-      const safeUrl = eCardUrl.replace(/[\r\n]/g, '');
-      console.log(`E-card updated for attendance ${safeId}: ${safeUrl}`);
+      const docRef = doc(db, this.collectionName, attendanceId);
+      await updateDoc(docRef, {
+        eCardGenerated: true,
+        eCardUrl: eCardUrl,
+        eCardGeneratedAt: Timestamp.now(),
+      });
     } catch (error) {
       throw new Error(`Failed to update e-card: ${(error instanceof Error ? error.message : String(error))}`);
     }

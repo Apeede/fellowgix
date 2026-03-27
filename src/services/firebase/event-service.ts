@@ -14,6 +14,7 @@ import {
     where
 } from 'firebase/firestore';
 import { db } from './firebase';
+import { firestoreTimestampToDate } from './firestore-utils';
 
 class EventService {
   private collectionName = 'events';
@@ -80,8 +81,8 @@ class EventService {
         return {
           ...data,
           id: doc.id,
-          createdAt: data.createdAt?.toDate() || new Date(),
-          updatedAt: data.updatedAt?.toDate() || new Date(),
+          createdAt: firestoreTimestampToDate(data.createdAt),
+          updatedAt: firestoreTimestampToDate(data.updatedAt),
         } as Event;
       });
     } catch (error) {
@@ -110,8 +111,8 @@ class EventService {
         return {
           ...data,
           id: doc.id,
-          createdAt: data.createdAt?.toDate() || new Date(),
-          updatedAt: data.updatedAt?.toDate() || new Date(),
+          createdAt: firestoreTimestampToDate(data.createdAt),
+          updatedAt: firestoreTimestampToDate(data.updatedAt),
         } as Event;
       });
     } catch (error) {
@@ -135,8 +136,8 @@ class EventService {
       return {
         ...data,
         id: docSnapshot.id,
-        createdAt: data.createdAt?.toDate() || new Date(),
-        updatedAt: data.updatedAt?.toDate() || new Date(),
+        createdAt: firestoreTimestampToDate(data.createdAt),
+        updatedAt: firestoreTimestampToDate(data.updatedAt),
       } as Event;
     } catch (error) {
       throw new Error(`Failed to fetch event: ${(error instanceof Error ? error.message : String(error))}`);
@@ -186,6 +187,7 @@ class EventService {
    */
   async getEventStats(adminId: string): Promise<EventStats> {
     try {
+      // Get all events for this admin
       const allEvents = await getDocs(
         query(collection(db, this.collectionName), where('createdBy', '==', adminId))
       );
@@ -194,11 +196,24 @@ class EventService {
       const today = new Date().toISOString().split('T')[0];
       const upcoming = activeEvents.filter((doc) => doc.data().date >= today);
 
+      // Get total attendance across all events for this admin
+      const eventIds = allEvents.docs.map((doc) => doc.id);
+      let totalAttendance = 0;
+
+      if (eventIds.length > 0) {
+        const attendanceQuery = query(
+          collection(db, 'attendance'),
+          where('eventId', 'in', eventIds)
+        );
+        const attendanceSnapshot = await getDocs(attendanceQuery);
+        totalAttendance = attendanceSnapshot.size;
+      }
+
       return {
         totalEvents: allEvents.docs.length,
         activeEvents: activeEvents.length,
         upcomingEvents: upcoming.length,
-        totalAttendance: 0, // Will be calculated from attendance collection
+        totalAttendance,
       };
     } catch (error) {
       throw new Error(`Failed to fetch event stats: ${(error instanceof Error ? error.message : String(error))}`);

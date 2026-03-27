@@ -11,9 +11,23 @@ import {
     where,
 } from 'firebase/firestore';
 import { db } from './firebase';
+import { firestoreTimestampToDate } from './firestore-utils';
 
 class MemberService {
   private collectionName = 'members';
+
+  /**
+   * Convert Firestore member document to Member type
+   */
+  private convertMemberDoc(doc: any, id: string): Member {
+    return {
+      ...doc,
+      id,
+      joinDate: firestoreTimestampToDate(doc.joinDate),
+      createdAt: firestoreTimestampToDate(doc.createdAt),
+      updatedAt: firestoreTimestampToDate(doc.updatedAt),
+    } as Member;
+  }
 
   /**
    * Create a new member
@@ -34,13 +48,8 @@ class MemberService {
 
       const docRef = await addDoc(collection(db, this.collectionName), memberData);
 
-      return {
-        ...memberData,
-        id: docRef.id,
-        joinDate: new Date(),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
+      // Return with converted dates
+      return this.convertMemberDoc(memberData, docRef.id);
     } catch (error) {
       throw new Error(`Failed to create member: ${(error instanceof Error ? error.message : String(error))}`);
     }
@@ -57,16 +66,7 @@ class MemberService {
       const q = query(collection(db, this.collectionName), ...constraints);
       const querySnapshot = await getDocs(q);
 
-      const results = querySnapshot.docs.map((doc) => {
-        const data = doc.data();
-        return {
-          ...data,
-          id: doc.id,
-          joinDate: data.joinDate?.toDate() || new Date(),
-          createdAt: data.createdAt?.toDate() || new Date(),
-          updatedAt: data.updatedAt?.toDate() || new Date(),
-        } as Member;
-      });
+      const results = querySnapshot.docs.map((doc) => this.convertMemberDoc(doc.data(), doc.id));
 
       // Also search by name (case-insensitive)
       const nameQuery = query(
@@ -75,16 +75,7 @@ class MemberService {
         where('name', '<=', searchTerm + '\uf8ff')
       );
       const nameSnapshot = await getDocs(nameQuery);
-      const nameResults = nameSnapshot.docs.map((doc) => {
-        const data = doc.data();
-        return {
-          ...data,
-          id: doc.id,
-          joinDate: data.joinDate?.toDate() || new Date(),
-          createdAt: data.createdAt?.toDate() || new Date(),
-          updatedAt: data.updatedAt?.toDate() || new Date(),
-        } as Member;
-      });
+      const nameResults = nameSnapshot.docs.map((doc) => this.convertMemberDoc(doc.data(), doc.id));
 
       // Combine and deduplicate
       const combined = [...results, ...nameResults];
@@ -108,14 +99,7 @@ class MemberService {
         return null;
       }
 
-      const data = docSnapshot.data();
-      return {
-        ...data,
-        id: docSnapshot.id,
-        joinDate: data.joinDate?.toDate() || new Date(),
-        createdAt: data.createdAt?.toDate() || new Date(),
-        updatedAt: data.updatedAt?.toDate() || new Date(),
-      } as Member;
+      return this.convertMemberDoc(docSnapshot.data(), docSnapshot.id);
     } catch (error) {
       throw new Error(`Failed to get member: ${(error instanceof Error ? error.message : String(error))}`);
     }
@@ -134,14 +118,7 @@ class MemberService {
       }
 
       const doc = querySnapshot.docs[0];
-      const data = doc.data();
-      return {
-        ...data,
-        id: doc.id,
-        joinDate: data.joinDate?.toDate() || new Date(),
-        createdAt: data.createdAt?.toDate() || new Date(),
-        updatedAt: data.updatedAt?.toDate() || new Date(),
-      } as Member;
+      return this.convertMemberDoc(doc.data(), doc.id);
     } catch (error) {
       throw new Error(`Failed to get member by email: ${(error instanceof Error ? error.message : String(error))}`);
     }
@@ -170,16 +147,7 @@ class MemberService {
       const q = query(collection(db, this.collectionName), where('isActive', '==', true));
       const querySnapshot = await getDocs(q);
 
-      return querySnapshot.docs.map((doc) => {
-        const data = doc.data();
-        return {
-          ...data,
-          id: doc.id,
-          joinDate: data.joinDate?.toDate() || new Date(),
-          createdAt: data.createdAt?.toDate() || new Date(),
-          updatedAt: data.updatedAt?.toDate() || new Date(),
-        } as Member;
-      });
+      return querySnapshot.docs.map((doc) => this.convertMemberDoc(doc.data(), doc.id));
     } catch (error) {
       throw new Error(`Failed to get members: ${(error instanceof Error ? error.message : String(error))}`);
     }

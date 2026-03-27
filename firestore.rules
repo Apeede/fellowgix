@@ -49,8 +49,8 @@ service cloud.firestore {
     match /guests/{document=**} {
       // Anyone can read guest records
       allow read: if true;
-      // Authenticated users can create guest records (check-in)
-      allow create: if request.auth != null;
+      // Anyone can create guest records (no auth required for check-in)
+      allow create: if true;
       // Only admins can update/delete
       allow update, delete: if request.auth != null && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }

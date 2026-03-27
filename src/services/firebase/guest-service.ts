@@ -11,9 +11,23 @@ import {
     where,
 } from 'firebase/firestore';
 import { db } from './firebase';
+import { firestoreTimestampToDate } from './firestore-utils';
 
 class GuestService {
   private collectionName = 'guests';
+
+  /**
+   * Convert Firestore guest document to Guest type
+   */
+  private convertGuestDoc(doc: any, id: string): Guest {
+    return {
+      ...doc,
+      id,
+      lastVisitedOn: firestoreTimestampToDate(doc.lastVisitedOn),
+      createdAt: firestoreTimestampToDate(doc.createdAt),
+      updatedAt: firestoreTimestampToDate(doc.updatedAt),
+    } as Guest;
+  }
 
   /**
    * Create or get existing guest
@@ -60,13 +74,7 @@ class GuestService {
 
       const docRef = await addDoc(collection(db, this.collectionName), guestData);
 
-      const newGuest: Guest = {
-        ...guestData,
-        id: docRef.id,
-        lastVisitedOn: new Date(),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
+      const newGuest = this.convertGuestDoc(guestData, docRef.id);
 
       return {
         guest: newGuest,
@@ -90,14 +98,7 @@ class GuestService {
         return null;
       }
 
-      const data = docSnapshot.data();
-      return {
-        ...data,
-        id: docSnapshot.id,
-        lastVisitedOn: data.lastVisitedOn?.toDate(),
-        createdAt: data.createdAt?.toDate() || new Date(),
-        updatedAt: data.updatedAt?.toDate() || new Date(),
-      } as Guest;
+      return this.convertGuestDoc(docSnapshot.data(), docSnapshot.id);
     } catch (error) {
       throw new Error(`Failed to get guest: ${(error instanceof Error ? error.message : String(error))}`);
     }
@@ -116,14 +117,7 @@ class GuestService {
       }
 
       const doc = querySnapshot.docs[0];
-      const data = doc.data();
-      return {
-        ...data,
-        id: doc.id,
-        lastVisitedOn: data.lastVisitedOn?.toDate(),
-        createdAt: data.createdAt?.toDate() || new Date(),
-        updatedAt: data.updatedAt?.toDate() || new Date(),
-      } as Guest;
+      return this.convertGuestDoc(doc.data(), doc.id);
     } catch (error) {
       throw new Error(`Failed to get guest by email: ${(error instanceof Error ? error.message : String(error))}`);
     }
@@ -142,14 +136,7 @@ class GuestService {
       }
 
       const doc = querySnapshot.docs[0];
-      const data = doc.data();
-      return {
-        ...data,
-        id: doc.id,
-        lastVisitedOn: data.lastVisitedOn?.toDate(),
-        createdAt: data.createdAt?.toDate() || new Date(),
-        updatedAt: data.updatedAt?.toDate() || new Date(),
-      } as Guest;
+      return this.convertGuestDoc(doc.data(), doc.id);
     } catch (error) {
       throw new Error(`Failed to get guest by phone: ${(error instanceof Error ? error.message : String(error))}`);
     }
@@ -168,16 +155,7 @@ class GuestService {
 
       const querySnapshot = await getDocs(q);
 
-      return querySnapshot.docs.map((doc) => {
-        const data = doc.data();
-        return {
-          ...data,
-          id: doc.id,
-          lastVisitedOn: data.lastVisitedOn?.toDate(),
-          createdAt: data.createdAt?.toDate() || new Date(),
-          updatedAt: data.updatedAt?.toDate() || new Date(),
-        } as Guest;
-      });
+      return querySnapshot.docs.map((doc) => this.convertGuestDoc(doc.data(), doc.id));
     } catch (error) {
       throw new Error(`Failed to search guests: ${(error instanceof Error ? error.message : String(error))}`);
     }
