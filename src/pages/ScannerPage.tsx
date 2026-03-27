@@ -9,6 +9,7 @@ const ScannerPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasCamera, setHasCamera] = useState(true);
+  const [scannerReady, setScannerReady] = useState(false);
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
 
   useEffect(() => {
@@ -16,7 +17,7 @@ const ScannerPage: React.FC = () => {
 
     return () => {
       if (scannerRef.current) {
-        scannerRef.current.clear();
+        scannerRef.current.clear().catch(() => undefined);
       }
     };
   }, [checkCameraPermission]);
@@ -31,15 +32,19 @@ const ScannerPage: React.FC = () => {
             { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1, disableFlip: false },
             false
           );
-          scannerRef.current.render(onScanSuccess, onScanError);
+          await scannerRef.current.render(onScanSuccess, onScanError);
+          setScannerReady(true);
         } catch (err) {
+          console.error('Scanner initialization failed', err);
           setError('Failed to initialize camera');
+          setScannerReady(false);
         }
       } else {
         setHasCamera(false);
         setError('No camera found on this device');
       }
     } catch (err) {
+      console.error('Camera permission check failed', err);
       setHasCamera(false);
       setError('Camera permission denied or not available');
     }
@@ -54,19 +59,26 @@ const ScannerPage: React.FC = () => {
       // Supports: /scan/:eventId and /events/:eventId/checkin
       let eventId: string | null = null;
 
-      try {
-        const parsedUrl = new URL(decodedText);
-        const pathname = parsedUrl.pathname.replace(/\/+$/, '');
-        const scanMatch = pathname.match(/^\/(?:scan|events)\/([^\/]+)(?:\/checkin)?$/);
+      const rawText = decodedText.trim();
 
-        if (scanMatch) {
-          eventId = scanMatch[1];
-        }
-      } catch {
-        // fallback to simple split for non-URL text
-        const urlParts = decodedText.split('/').filter(Boolean);
-        if (urlParts.length >= 2 && (urlParts[0] === 'scan' || urlParts[0] === 'events')) {
-          eventId = urlParts[1];
+      // If QR code contains a raw event ID, use it directly.
+      if (/^[0-9a-fA-F-]{20,}$/u.test(rawText)) {
+        eventId = rawText;
+      } else {
+        try {
+          const parsedUrl = new URL(rawText);
+          const pathname = parsedUrl.pathname.replace(/\/+$/, '');
+          const scanMatch = pathname.match(/^\/(?:scan|events)\/([^\/]+)(?:\/checkin)?$/);
+
+          if (scanMatch) {
+            eventId = scanMatch[1];
+          }
+        } catch {
+          // fallback to simple split for non-URL text
+          const urlParts = rawText.split('/').filter(Boolean);
+          if (urlParts.length >= 2 && (urlParts[0] === 'scan' || urlParts[0] === 'events')) {
+            eventId = urlParts[1];
+          }
         }
       }
 
@@ -90,10 +102,10 @@ const ScannerPage: React.FC = () => {
     }
   }, [navigate]);
 
-  const onScanError = () => {
-    // Suppress error messages during scanning
-    // Only show actual errors, not "No QR found" messages
-  };
+  const onScanError = useCallback((errorMessage: string) => {
+    // Suppress transient scan errors and log them for debugging
+    console.debug('QR scan error:', errorMessage);
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100">
@@ -130,7 +142,7 @@ const ScannerPage: React.FC = () => {
 
             {/* Scanner Container */}
             {hasCamera ? (
-              <div className="bg-gray-100 rounded-lg overflow-hidden">
+              <div className="bg-gray-100 rounded-lg overflow-hidden relative min-h-[380px]">
                 {isLoading && (
                   <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 rounded-lg">
                     <div className="text-center">
@@ -139,7 +151,28 @@ const ScannerPage: React.FC = () => {
                     </div>
                   </div>
                 )}
-                <div id="qr-scanner" className="w-full"></div>
+
+                {error ? (
+                  <div className="flex items-center justify-center h-full p-8 text-center">
+                    <div>
+                      <AlertCircle className="w-12 h-12 text-yellow-600 mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">Scanner unavailable</h3>
+                      <p className="text-gray-600 mb-4">{error}</p>
+                      <p className="text-sm text-gray-500">
+                        Try refreshing the page, granting camera access, or use manual event entry below.
+                      </p>
+                    </div>
+                  </div>
+                ) : !scannerReady ? (
+                  <div className="flex items-center justify-center h-full p-8 text-center">
+                    <div>
+                      <Loader className="w-10 h-10 text-primary-600 animate-spin mx-auto mb-4" />
+                      <p className="text-gray-600">Preparing camera…</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div id="qr-scanner" className="w-full min-h-[380px]" />
+                )}
               </div>
             ) : (
               <div className="bg-red-50 border-2 border-red-200 rounded-lg p-8 text-center">
