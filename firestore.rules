@@ -40,9 +40,9 @@ service cloud.firestore {
     match /attendance/{document=**} {
       // Anyone can read attendance records
       allow read: if true;
-      // Authenticated users can create attendance records (check-in)
-      allow create: if request.auth != null;
-      // Only admins can update/delete
+      // Public check-in routes must be able to create attendance documents without authentication
+      allow create: if true;
+      // Only admins can update/delete attendance records
       allow update, delete: if request.auth != null && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
     
@@ -51,8 +51,23 @@ service cloud.firestore {
       allow read: if true;
       // Anyone can create guest records (no auth required for check-in)
       allow create: if true;
-      // Only admins can update/delete
-      allow update, delete: if request.auth != null && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+
+      function isGuestCheckInUpdate() {
+        return request.auth == null
+          && request.resource.data.name == resource.data.name
+          && request.resource.data.email == resource.data.email
+          && request.resource.data.phone == resource.data.phone
+          && request.resource.data.type == resource.data.type
+          && request.resource.data.club == resource.data.club
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.visitCount == resource.data.visitCount + 1
+          && request.resource.data.lastVisitedOn is timestamp
+          && request.resource.data.updatedAt is timestamp;
+      }
+
+      // Allow returning guest update during check-in, or allow admins to manage guest records
+      allow update: if isGuestCheckInUpdate() || (request.auth != null && exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
+      allow delete: if request.auth != null && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
     // Default deny all
