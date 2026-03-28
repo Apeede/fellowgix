@@ -1,7 +1,7 @@
 import { useAuth } from '@context/useAuth';
 import { eventService } from '@services/firebase/event-service';
 import { EventStats } from '@types/event';
-import { BarChart3, Calendar, LogOut, Plus, TrendingUp, UserCheck, Users } from 'lucide-react';
+import { BarChart3, Calendar, LogOut, Plus, ShieldCheck, TrendingUp, UserCheck, Users } from 'lucide-react';
 import React, { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
@@ -11,6 +11,9 @@ const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const [stats, setStats] = useState<EventStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const canManageMembers = currentAdmin?.role === 'club_admin' || currentAdmin?.role === 'super_admin';
+  const canManageEvents =
+    currentAdmin?.role === 'event_manager' || currentAdmin?.role === 'club_admin' || currentAdmin?.role === 'super_admin';
 
   const loadStats = useCallback(async () => {
     if (!currentAdmin) return;
@@ -181,15 +184,31 @@ const DashboardPage: React.FC = () => {
               </div>
               <Calendar className="w-8 h-8 text-primary-600" />
             </div>
-            <button type="button" className="btn-primary mt-4 flex items-center gap-2 w-full justify-center">
-              <Plus className="w-4 h-4" />
-              View Events
-            </button>
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <button type="button" className="btn-primary flex items-center gap-2 w-full justify-center">
+                <Plus className="w-4 h-4" />
+                View Events
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (canManageEvents) navigate('/events/create');
+                }}
+                className="btn-outline flex items-center gap-2 w-full justify-center disabled:opacity-60"
+                disabled={!canManageEvents}
+              >
+                <Plus className="w-4 h-4" />
+                Create Event
+              </button>
+            </div>
           </div>
 
           {/* Members Card */}
           <div
-            onClick={() => navigate('/members')}
+            onClick={() => {
+              if (canManageMembers) navigate('/members');
+            }}
             className="card cursor-pointer hover:shadow-lg hover:border-primary-600 transition-all border-2 border-transparent"
           >
             <div className="flex items-start justify-between mb-4">
@@ -203,27 +222,27 @@ const DashboardPage: React.FC = () => {
             </div>
             <button type="button" className="btn-primary mt-4 flex items-center gap-2 w-full justify-center">
               <Users className="w-4 h-4" />
-              View Members
+              {canManageMembers ? 'View Members' : 'No Access'}
             </button>
           </div>
 
           {/* Analytics Card */}
           <div
-            onClick={() => navigate('/events')}
+            onClick={() => navigate('/analytics/club')}
             className="card cursor-pointer hover:shadow-lg hover:border-primary-600 transition-all border-2 border-transparent"
           >
             <div className="flex items-start justify-between mb-4">
               <div>
                 <h3 className="text-xl font-bold text-gray-900">Analytics</h3>
                 <p className="text-gray-600 text-sm mt-1">
-                  Open events and view analytics per event
+                  Club-level trends and event comparisons
                 </p>
               </div>
               <BarChart3 className="w-8 h-8 text-primary-600" />
             </div>
             <button type="button" className="btn-primary mt-4 flex items-center gap-2 w-full justify-center">
               <BarChart3 className="w-4 h-4" />
-              View Analytics
+              Club Analytics
             </button>
           </div>
         </div>
@@ -234,7 +253,9 @@ const DashboardPage: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <button
               type="button"
-              onClick={() => navigate('/members')}
+              onClick={() => {
+                if (canManageMembers) navigate('/members');
+              }}
               className="p-4 border-2 border-gray-200 rounded-lg hover:border-primary-600 hover:bg-primary-50 transition-all text-left"
             >
               <div className="flex items-center gap-3">
@@ -248,14 +269,30 @@ const DashboardPage: React.FC = () => {
 
             <button
               type="button"
-              onClick={() => navigate('/events/create')}
+              onClick={() => {
+                if (canManageEvents) navigate('/events/create');
+              }}
               className="p-4 border-2 border-gray-200 rounded-lg hover:border-primary-600 hover:bg-primary-50 transition-all text-left"
             >
               <div className="flex items-center gap-3">
                 <Plus className="w-5 h-5 text-primary-600" />
                 <div>
                   <p className="font-medium text-gray-900">Create New Event</p>
-                  <p className="text-sm text-gray-600">Start a new event</p>
+                  <p className="text-sm text-gray-600">{canManageEvents ? 'Start a new event' : 'Role cannot create events'}</p>
+                </div>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => navigate('/analytics/club')}
+              className="p-4 border-2 border-gray-200 rounded-lg hover:border-primary-600 hover:bg-primary-50 transition-all text-left"
+            >
+              <div className="flex items-center gap-3">
+                <TrendingUp className="w-5 h-5 text-primary-600" />
+                <div>
+                  <p className="font-medium text-gray-900">Club Analytics</p>
+                  <p className="text-sm text-gray-600">See trends across all club events</p>
                 </div>
               </div>
             </button>
@@ -287,6 +324,22 @@ const DashboardPage: React.FC = () => {
                 </div>
               </div>
             </button>
+
+            {currentAdmin?.role === 'super_admin' && (
+              <button
+                type="button"
+                onClick={() => navigate('/super-admin')}
+                className="p-4 border-2 border-gray-200 rounded-lg hover:border-primary-600 hover:bg-primary-50 transition-all text-left"
+              >
+                <div className="flex items-center gap-3">
+                  <ShieldCheck className="w-5 h-5 text-primary-600" />
+                  <div>
+                    <p className="font-medium text-gray-900">Super Admin</p>
+                    <p className="text-sm text-gray-600">Create admins for clubs</p>
+                  </div>
+                </div>
+              </button>
+            )}
           </div>
         </div>
       </main>

@@ -1,4 +1,5 @@
 import { AttendanceRecord, AttendanceStats, CheckInResponse } from '@types/attendance';
+import { auditLogService } from './audit-log-service';
 import {
     Timestamp,
     addDoc,
@@ -170,6 +171,31 @@ class AttendanceService {
       });
     } catch (error) {
       throw new Error(`Failed to update e-card: ${(error instanceof Error ? error.message : String(error))}`);
+    }
+  }
+
+  async updateAttendanceNotes(
+    attendanceId: string,
+    notes: string,
+    actor?: { id: string; email: string; role: string; clubId: string }
+  ): Promise<void> {
+    const docRef = doc(db, this.collectionName, attendanceId);
+    await updateDoc(docRef, {
+      notes,
+      updatedAt: Timestamp.now(),
+    });
+    if (actor) {
+      await auditLogService.log({
+        action: 'ATTENDANCE_UPDATED',
+        actorId: actor.id,
+        actorEmail: actor.email,
+        actorRole: actor.role,
+        actorClubId: actor.clubId,
+        targetType: 'attendance',
+        targetId: attendanceId,
+        targetClubId: actor.clubId,
+        details: { fields: ['notes'] },
+      });
     }
   }
 }

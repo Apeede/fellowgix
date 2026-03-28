@@ -10,6 +10,7 @@ import {
     updateDoc,
     where,
 } from 'firebase/firestore';
+import { normalizeClubName, normalizeEmail, normalizePhone } from './club-utils';
 import { db } from './firebase';
 import { firestoreTimestampToDate } from './firestore-utils';
 
@@ -34,14 +35,42 @@ class MemberService {
    */
   async createMember(input: CreateMemberInput, clubId: string, createdByAdminId: string): Promise<Member> {
     try {
+      const normalizedEmail = normalizeEmail(input.email);
+      const normalizedPhone = normalizePhone(input.phone);
+      const normalizedClubName = normalizeClubName(input.club);
+
+      const duplicateByEmail = await getDocs(
+        query(
+          collection(db, this.collectionName),
+          where('clubId', '==', clubId),
+          where('email', '==', normalizedEmail),
+          where('isActive', '==', true)
+        )
+      );
+      if (!duplicateByEmail.empty) {
+        throw new Error('A member with this email already exists in this club');
+      }
+
+      const duplicateByPhone = await getDocs(
+        query(
+          collection(db, this.collectionName),
+          where('clubId', '==', clubId),
+          where('phone', '==', normalizedPhone),
+          where('isActive', '==', true)
+        )
+      );
+      if (!duplicateByPhone.empty) {
+        throw new Error('A member with this phone already exists in this club');
+      }
+
       const memberData = {
         clubId,
         createdByAdminId,
         name: input.name,
-        email: input.email,
-        phone: input.phone,
+        email: normalizedEmail,
+        phone: normalizedPhone,
         memberId: input.memberId || '',
-        club: input.club || '',
+        club: normalizedClubName,
         joinDate: Timestamp.now(),
         isActive: true,
         createdAt: Timestamp.now(),
@@ -117,7 +146,7 @@ class MemberService {
    */
   async getMemberByEmail(email: string): Promise<Member | null> {
     try {
-      const q = query(collection(db, this.collectionName), where('email', '==', email));
+      const q = query(collection(db, this.collectionName), where('email', '==', normalizeEmail(email)));
       const querySnapshot = await getDocs(q);
 
       if (querySnapshot.empty) {

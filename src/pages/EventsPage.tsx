@@ -1,4 +1,5 @@
 import { useAuth } from '@context/useAuth';
+import { auditLogService } from '@services/firebase/audit-log-service';
 import { eventService } from '@services/firebase/event-service';
 import { qrCodeGeneratorService } from '@services/qrcode/qrcode-generator';
 import { Event } from '@types/event';
@@ -28,6 +29,8 @@ const EventsPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'active' | 'upcoming'>('upcoming');
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const canManageEvents =
+    currentAdmin?.role === 'event_manager' || currentAdmin?.role === 'club_admin' || currentAdmin?.role === 'super_admin';
 
   const loadEvents = useCallback(async () => {
     if (!currentAdmin) return;
@@ -74,12 +77,27 @@ const EventsPage: React.FC = () => {
   };
 
   const handleDeleteEvent = async (eventId: string, eventName: string) => {
+    if (!canManageEvents || !currentAdmin) {
+      toast.error('Your role cannot delete events');
+      return;
+    }
     if (!window.confirm(`Are you sure you want to delete "${eventName}"?`)) {
       return;
     }
 
     try {
       await eventService.deleteEvent(eventId);
+      await auditLogService.log({
+        action: 'EVENT_DELETED',
+        actorId: currentAdmin.id,
+        actorEmail: currentAdmin.email,
+        actorRole: currentAdmin.role,
+        actorClubId: currentAdmin.clubId,
+        targetType: 'event',
+        targetId: eventId,
+        targetClubId: currentAdmin.clubId,
+        details: { eventName },
+      });
       setEvents(events.filter((e) => e.id !== eventId));
       toast.success('Event deleted successfully');
     } catch (error) {
@@ -119,8 +137,11 @@ const EventsPage: React.FC = () => {
               </button>
               <button
                 type="button"
-                onClick={() => navigate('/events/create')}
+                onClick={() => {
+                  if (canManageEvents) navigate('/events/create');
+                }}
                 className="btn-primary flex-1 sm:flex-none flex items-center justify-center gap-2"
+                disabled={!canManageEvents}
               >
                 <Plus className="w-5 h-5" />
                 Create Event
@@ -283,6 +304,7 @@ const EventsPage: React.FC = () => {
                         onClick={() => navigate(`/events/${event.id}/edit`)}
                         className="btn-outline flex items-center justify-center gap-2 py-2 px-3 text-sm"
                         title="Edit event"
+                        disabled={!canManageEvents}
                       >
                         <Edit className="w-4 h-4" />
                         Edit
@@ -292,6 +314,7 @@ const EventsPage: React.FC = () => {
                         onClick={() => handleDeleteEvent(event.id, event.name)}
                         className="flex items-center justify-center gap-2 py-2 px-3 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors"
                         title="Delete event"
+                        disabled={!canManageEvents}
                       >
                         <Trash2 className="w-4 h-4" />
                         Delete

@@ -1,11 +1,9 @@
 import ProtectedRoute from '@components/ProtectedRoute';
 import { AuthProvider } from '@context/AuthContext';
 import AdminInitPage from '@pages/AdminInitPage';
-import AttendanceListPage from '@pages/AttendanceListPage';
 import CreateEventPage from '@pages/CreateEventPage';
 import DashboardPage from '@pages/DashboardPage';
 import ECardPage from '@pages/ECardPage';
-import EventAnalyticsPage from '@pages/EventAnalyticsPage';
 import EventCheckInPage from '@pages/EventCheckInPage';
 import EventQRCodePage from '@pages/EventQRCodePage';
 import EventsPage from '@pages/EventsPage';
@@ -14,11 +12,29 @@ import LoginPage from '@pages/LoginPage';
 import MembersPage from '@pages/MembersPage';
 import MemberCheckInPage from '@pages/MemberCheckInPage';
 import ScannerPage from '@pages/ScannerPage';
+import React, { Suspense } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
 import './index.css';
 
+const SuperAdminPage = React.lazy(() => import('@pages/SuperAdminPage'));
+const EventAnalyticsPage = React.lazy(() => import('@pages/EventAnalyticsPage'));
+const AttendanceListPage = React.lazy(() => import('@pages/AttendanceListPage'));
+const ClubAnalyticsPage = React.lazy(() => import('@pages/ClubAnalyticsPage'));
+
 function App() {
+  const withSuspense = (node: React.ReactNode) => (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="w-10 h-10 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
+        </div>
+      }
+    >
+      {node}
+    </Suspense>
+  );
+
   return (
     <Router>
       <AuthProvider>
@@ -41,8 +57,17 @@ function App() {
           <Route
             path="/members"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['super_admin', 'club_admin']}>
                 <MembersPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/super-admin"
+            element={
+              <ProtectedRoute allowedRoles={['super_admin']}>
+                {withSuspense(<SuperAdminPage />)}
               </ProtectedRoute>
             }
           />
@@ -51,7 +76,7 @@ function App() {
           <Route
             path="/events"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['super_admin', 'club_admin', 'event_manager', 'viewer']}>
                 <EventsPage />
               </ProtectedRoute>
             }
@@ -60,7 +85,7 @@ function App() {
           <Route
             path="/events/create"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['super_admin', 'club_admin', 'event_manager']}>
                 <CreateEventPage />
               </ProtectedRoute>
             }
@@ -69,7 +94,7 @@ function App() {
           <Route
             path="/events/:eventId/qrcode"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['super_admin', 'club_admin', 'event_manager', 'viewer']}>
                 <EventQRCodePage />
               </ProtectedRoute>
             }
@@ -101,8 +126,8 @@ function App() {
           <Route
             path="/events/:eventId/analytics"
             element={
-              <ProtectedRoute>
-                <EventAnalyticsPage />
+              <ProtectedRoute allowedRoles={['super_admin', 'club_admin', 'event_manager', 'viewer']}>
+                {withSuspense(<EventAnalyticsPage />)}
               </ProtectedRoute>
             }
           />
@@ -110,8 +135,17 @@ function App() {
           <Route
             path="/events/:eventId/attendance"
             element={
-              <ProtectedRoute>
-                <AttendanceListPage />
+              <ProtectedRoute allowedRoles={['super_admin', 'club_admin', 'event_manager', 'viewer']}>
+                {withSuspense(<AttendanceListPage />)}
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/analytics/club"
+            element={
+              <ProtectedRoute allowedRoles={['super_admin', 'club_admin', 'event_manager', 'viewer']}>
+                {withSuspense(<ClubAnalyticsPage />)}
               </ProtectedRoute>
             }
           />

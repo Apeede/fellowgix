@@ -9,11 +9,37 @@
       ]
     },
     {
+      "collectionGroup": "members",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "clubId", "order": "ASCENDING"},
+        {"fieldPath": "email", "order": "ASCENDING"},
+        {"fieldPath": "isActive", "order": "ASCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "members",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "clubId", "order": "ASCENDING"},
+        {"fieldPath": "phone", "order": "ASCENDING"},
+        {"fieldPath": "isActive", "order": "ASCENDING"}
+      ]
+    },
+    {
       "collectionGroup": "attendance",
       "queryScope": "COLLECTION",
       "fields": [
         {"fieldPath": "eventId", "order": "ASCENDING"},
         {"fieldPath": "checkInTime", "order": "DESCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "attendance",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "eventId", "order": "ASCENDING"},
+        {"fieldPath": "checkedInAt", "order": "DESCENDING"}
       ]
     },
     {
@@ -40,6 +66,38 @@
       "fields": [
         {"fieldPath": "eventId", "order": "ASCENDING"},
         {"fieldPath": "visitCount", "order": "DESCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "guests",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "clubId", "order": "ASCENDING"},
+        {"fieldPath": "email", "order": "ASCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "guests",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "clubId", "order": "ASCENDING"},
+        {"fieldPath": "phone", "order": "ASCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "auditLogs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "targetClubId", "order": "ASCENDING"},
+        {"fieldPath": "createdAt", "order": "DESCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "trash",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "deleteGroupId", "order": "ASCENDING"},
+        {"fieldPath": "deletedAt", "order": "DESCENDING"}
       ]
     }
   ],

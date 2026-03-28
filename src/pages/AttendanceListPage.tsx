@@ -27,16 +27,8 @@ const AttendanceListPage: React.FC = () => {
   const [isExporting, setIsExporting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<FilterType>('all');
-
-  useEffect(() => {
-    if (eventId) {
-      loadData();
-    }
-  }, [eventId, loadData]);
-
-  useEffect(() => {
-    applyFilters();
-  }, [attendees, searchTerm, filterType, applyFilters]);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
 
   const loadData = useCallback(async () => {
     try {
@@ -102,6 +94,36 @@ const AttendanceListPage: React.FC = () => {
       setIsExporting(false);
     }
   };
+  const handleExportPdf = async () => {
+    if (!eventId) return;
+    setIsExporting(true);
+    try {
+      await AnalyticsService.exportAttendanceAsPDF(eventId, eventName);
+      toast.success('Attendance report opened for PDF export');
+    } catch (error) {
+      toast.error('Failed to export attendance PDF');
+      console.error(error);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const totalPages = Math.max(1, Math.ceil(filteredAttendees.length / pageSize));
+  const pagedAttendees = filteredAttendees.slice((page - 1) * pageSize, page * pageSize);
+  useEffect(() => {
+    if (eventId) {
+      loadData();
+    }
+  }, [eventId, loadData]);
+  useEffect(() => {
+    applyFilters();
+  }, [attendees, searchTerm, filterType, applyFilters]);
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, filterType, pageSize]);
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -136,6 +158,15 @@ const AttendanceListPage: React.FC = () => {
                 <Download className="w-4 h-4" />
               )}
               {isExporting ? 'Exporting...' : 'Export CSV'}
+            </button>
+            <button
+              type="button"
+              onClick={handleExportPdf}
+              disabled={isLoading || isExporting || attendees.length === 0}
+              className="btn-outline w-full sm:w-auto flex items-center justify-center gap-2"
+            >
+              <Download className="w-4 h-4" />
+              Export PDF
             </button>
           </div>
         </div>
@@ -252,7 +283,7 @@ const AttendanceListPage: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {filteredAttendees.map((attendee) => (
+                    {pagedAttendees.map((attendee) => (
                       <tr key={attendee.id} className="hover:bg-gray-50 transition-colors">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-2">
@@ -301,6 +332,37 @@ const AttendanceListPage: React.FC = () => {
                     ))}
                   </tbody>
                 </table>
+              </div>
+              <div className="p-4 border-t border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <p className="text-sm text-gray-600">
+                  {filteredAttendees.length === 0
+                    ? 'Showing 0 of 0'
+                    : `Showing ${(page - 1) * pageSize + 1}-${Math.min(page * pageSize, filteredAttendees.length)} of ${filteredAttendees.length}`}
+                </p>
+                <div className="flex items-center gap-2">
+                  <select className="input-field py-1 text-sm" value={pageSize} onChange={(e) => setPageSize(Number(e.target.value))}>
+                    <option value={10}>10 / page</option>
+                    <option value={25}>25 / page</option>
+                    <option value={50}>50 / page</option>
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                    disabled={page <= 1}
+                    className="btn-outline py-1 px-3 disabled:opacity-50"
+                  >
+                    Prev
+                  </button>
+                  <span className="text-sm text-gray-600">{page}/{totalPages}</span>
+                  <button
+                    type="button"
+                    onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+                    disabled={page >= totalPages}
+                    className="btn-outline py-1 px-3 disabled:opacity-50"
+                  >
+                    Next
+                  </button>
+                </div>
               </div>
             </div>
 

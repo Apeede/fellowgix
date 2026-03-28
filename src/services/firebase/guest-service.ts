@@ -10,6 +10,7 @@ import {
     updateDoc,
     where,
 } from 'firebase/firestore';
+import { normalizeClubName, normalizeEmail, normalizeGuestType, normalizePhone } from './club-utils';
 import { db } from './firebase';
 import { firestoreTimestampToDate } from './firestore-utils';
 
@@ -35,11 +36,19 @@ class GuestService {
    */
   async checkInGuest(input: CreateGuestInput, clubId: string): Promise<GuestCheckInData> {
     try {
+      const normalizedInput: CreateGuestInput = {
+        ...input,
+        email: normalizeEmail(input.email),
+        phone: normalizePhone(input.phone),
+        type: normalizeGuestType(input.type),
+        club: normalizeClubName(input.club),
+      };
+
       // Check if guest exists by email or phone
-      let existingGuest = await this.getGuestByEmail(input.email, clubId);
+      let existingGuest = await this.getGuestByEmail(normalizedInput.email, clubId);
 
       if (!existingGuest) {
-        existingGuest = await this.getGuestByPhone(input.phone, clubId);
+        existingGuest = await this.getGuestByPhone(normalizedInput.phone, clubId);
       }
 
       if (existingGuest) {
@@ -62,11 +71,11 @@ class GuestService {
       // Create new guest
       const guestData = {
         clubId,
-        name: input.name,
-        email: input.email,
-        phone: input.phone,
-        type: input.type,
-        club: input.club || '',
+        name: normalizedInput.name,
+        email: normalizedInput.email,
+        phone: normalizedInput.phone,
+        type: normalizedInput.type,
+        club: normalizedInput.club || '',
         visitCount: 1,
         lastVisitedOn: Timestamp.now(),
         createdAt: Timestamp.now(),
@@ -110,7 +119,7 @@ class GuestService {
    */
   async getGuestByEmail(email: string, clubId?: string): Promise<Guest | null> {
     try {
-      const constraints = [where('email', '==', email)];
+      const constraints = [where('email', '==', normalizeEmail(email))];
       if (clubId) constraints.push(where('clubId', '==', clubId));
       const q = query(collection(db, this.collectionName), ...constraints);
       const querySnapshot = await getDocs(q);
@@ -131,7 +140,7 @@ class GuestService {
    */
   async getGuestByPhone(phone: string, clubId?: string): Promise<Guest | null> {
     try {
-      const constraints = [where('phone', '==', phone)];
+      const constraints = [where('phone', '==', normalizePhone(phone))];
       if (clubId) constraints.push(where('clubId', '==', clubId));
       const q = query(collection(db, this.collectionName), ...constraints);
       const querySnapshot = await getDocs(q);
@@ -150,10 +159,11 @@ class GuestService {
   /**
    * Search guests by name or email
    */
-  async searchGuests(searchTerm: string): Promise<Guest[]> {
+  async searchGuests(searchTerm: string, clubId: string): Promise<Guest[]> {
     try {
       const q = query(
         collection(db, this.collectionName),
+        where('clubId', '==', clubId),
         where('name', '>=', searchTerm),
         where('name', '<=', searchTerm + '\uf8ff')
       );

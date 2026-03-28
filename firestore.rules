@@ -21,8 +21,32 @@ service cloud.firestore {
       return isAdmin() && adminData().role == 'super_admin';
     }
 
+    function adminRole() {
+      return isAdmin() ? adminData().role : '';
+    }
+
+    function isClubAdminLike() {
+      return isAdmin() && adminRole() in ['admin', 'club_admin', 'super_admin'];
+    }
+
+    function isEventManagerLike() {
+      return isAdmin() && adminRole() in ['event_manager', 'admin', 'club_admin', 'super_admin'];
+    }
+
+    function isViewerLike() {
+      return isAdmin() && adminRole() in ['viewer', 'event_manager', 'admin', 'club_admin', 'super_admin'];
+    }
+
     function sameClub(clubId) {
       return isAdmin() && clubId == adminData().clubId;
+    }
+
+    function canManageClub(clubId) {
+      return isSuperAdmin() || sameClub(clubId);
+    }
+
+    function validRole(role) {
+      return role in ['viewer', 'event_manager', 'admin', 'club_admin', 'super_admin'];
     }
 
     function hasRequiredAttendanceFields() {
@@ -51,55 +75,67 @@ service cloud.firestore {
     match /admins/{adminId} {
       allow read: if isAdmin() && (
         adminId == request.auth.uid ||
-        (isSuperAdmin() && resource.data.clubId == adminData().clubId)
+        isSuperAdmin()
       );
 
-      allow create: if isSignedIn() && request.auth.uid == adminId && (
+      allow create: if isSignedIn() && (
+        // First admin bootstrap can only self-create as super admin.
         (
+          request.auth.uid == adminId &&
           !exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
-          request.resource.data.role == 'super_admin'
+          request.resource.data.role == 'super_admin' &&
+          validRole(request.resource.data.role)
         ) ||
+        // Existing super admin can create admins for any club.
         (
           isSuperAdmin() &&
-          request.resource.data.clubId == adminData().clubId
+          validRole(request.resource.data.role) &&
+          request.resource.data.clubId is string &&
+          request.resource.data.clubId.size() > 0
         )
       );
 
       allow update, delete: if isAdmin() && (
         adminId == request.auth.uid ||
-        (isSuperAdmin() && resource.data.clubId == adminData().clubId)
+        isSuperAdmin()
       );
     }
 
     match /members/{memberId} {
       // Public read is required for member self-check-in search flow.
       allow read: if true;
-      allow create: if isAdmin() && sameClub(request.resource.data.clubId);
-      allow update: if isAdmin()
-        && sameClub(resource.data.clubId)
+      allow create: if isClubAdminLike()
+        && canManageClub(request.resource.data.clubId)
+        && request.resource.data.clubId is string
+        && request.resource.data.clubId.size() > 0;
+      allow update: if isClubAdminLike()
+        && canManageClub(resource.data.clubId)
         && request.resource.data.clubId == resource.data.clubId;
-      allow delete: if isAdmin() && sameClub(resource.data.clubId);
+      allow delete: if isClubAdminLike() && canManageClub(resource.data.clubId);
     }
 
     match /events/{eventId} {
       // Public read is required for scanner/check-in event resolution.
       allow read: if true;
-      allow create: if isAdmin() && sameClub(request.resource.data.clubId);
-      allow update: if isAdmin()
-        && sameClub(resource.data.clubId)
+      allow create: if isEventManagerLike()
+        && canManageClub(request.resource.data.clubId)
+        && request.resource.data.clubId is string
+        && request.resource.data.clubId.size() > 0;
+      allow update: if isEventManagerLike()
+        && canManageClub(resource.data.clubId)
         && request.resource.data.clubId == resource.data.clubId;
-      allow delete: if isAdmin() && sameClub(resource.data.clubId);
+      allow delete: if isEventManagerLike() && canManageClub(resource.data.clubId);
     }
 
     match /attendance/{attendanceId} {
-      allow read: if isAdmin() && sameClub(resource.data.clubId);
+      allow read: if isViewerLike() && canManageClub(resource.data.clubId);
       // Public check-in allowed only when request club matches active event club.
       allow create: if validPublicAttendanceCreate();
-      allow update, delete: if isAdmin() && sameClub(resource.data.clubId);
+      allow update, delete: if isEventManagerLike() && canManageClub(resource.data.clubId);
     }
 
     match /guests/{guestId} {
-      allow read: if isAdmin() && sameClub(resource.data.clubId);
+      allow read: if isViewerLike() && canManageClub(resource.data.clubId);
 
       // Public create for check-in flow. Club must be provided.
       allow create: if request.resource.data.clubId is string && request.resource.data.clubId.size() > 0;
@@ -118,8 +154,24 @@ service cloud.firestore {
           && request.resource.data.updatedAt is timestamp;
       }
 
-      allow update: if isGuestCheckInUpdate() || (isAdmin() && sameClub(resource.data.clubId));
-      allow delete: if isAdmin() && sameClub(resource.data.clubId);
+      allow update: if isGuestCheckInUpdate() || (isEventManagerLike() && canManageClub(resource.data.clubId));
+      allow delete: if isEventManagerLike() && canManageClub(resource.data.clubId);
+    }
+
+    match /auditLogs/{logId} {
+      allow create: if isAdmin();
+      allow read: if isSuperAdmin() || (isAdmin() && resource.data.targetClubId == adminData().clubId);
+      allow update, delete: if false;
+    }
+
+    match /trash/{trashId} {
+      allow read, write: if isSuperAdmin();
+    }
+
+    match /errorLogs/{errorId} {
+      allow create: if isAdmin();
+      allow read: if isSuperAdmin();
+      allow update, delete: if false;
     }
 
     match /{document=**} {

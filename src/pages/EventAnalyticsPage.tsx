@@ -4,6 +4,7 @@ import {
     AlertCircle,
     ArrowLeft,
     Calendar,
+    Download,
     Eye,
     Loader,
     MapPin,
@@ -23,6 +24,8 @@ const EventAnalyticsPage: React.FC = () => {
   const [event, setEvent] = useState<Record<string, unknown> | null>(null);
   const [analytics, setAnalytics] = useState<AttendanceAnalytics | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
 
   const loadData = useCallback(async () => {
     try {
@@ -38,7 +41,10 @@ const EventAnalyticsPage: React.FC = () => {
       setEvent(eventData);
 
       // Load analytics
-      const analyticsData = await AnalyticsService.getEventAnalytics(eventId!);
+      const analyticsData = await AnalyticsService.getEventAnalytics(eventId!, {
+        from: fromDate ? new Date(`${fromDate}T00:00:00`) : undefined,
+        to: toDate ? new Date(`${toDate}T23:59:59`) : undefined,
+      });
       setAnalytics(analyticsData);
     } catch (error) {
       toast.error('Failed to load analytics');
@@ -46,7 +52,7 @@ const EventAnalyticsPage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [eventId, navigate]);
+  }, [eventId, navigate, fromDate, toDate]);
 
   useEffect(() => {
     if (eventId) {
@@ -130,6 +136,35 @@ const EventAnalyticsPage: React.FC = () => {
               <Eye className="w-4 h-4" />
               View Full List
             </button>
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  await AnalyticsService.exportAttendanceAsCSV(eventId!, String(event.name));
+                  toast.success('CSV exported');
+                } catch {
+                  toast.error('CSV export failed');
+                }
+              }}
+              className="btn-outline w-full sm:w-auto flex items-center justify-center gap-2"
+            >
+              <Download className="w-4 h-4" />
+              Export CSV
+            </button>
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  await AnalyticsService.exportAttendanceAsPDF(eventId!, String(event.name));
+                } catch {
+                  toast.error('PDF export failed');
+                }
+              }}
+              className="btn-outline w-full sm:w-auto flex items-center justify-center gap-2"
+            >
+              <Download className="w-4 h-4" />
+              Export PDF
+            </button>
           </div>
         </div>
       </div>
@@ -170,6 +205,17 @@ const EventAnalyticsPage: React.FC = () => {
           </div>
 
           {/* Key Metrics */}
+          <div className="card">
+            <h3 className="text-lg font-bold text-gray-900 mb-3">Date Filter</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <input className="input-field" type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+              <input className="input-field" type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+              <button type="button" className="btn-outline" onClick={() => { setFromDate(''); setToDate(''); }}>
+                Clear Filter
+              </button>
+            </div>
+          </div>
+
           <div className="grid md:grid-cols-4 gap-4">
             <div className="card bg-gradient-to-br from-blue-50 to-indigo-50">
               <div className="flex items-center justify-between">
@@ -216,6 +262,17 @@ const EventAnalyticsPage: React.FC = () => {
                 <AlertCircle className="w-12 h-12 text-orange-200" />
               </div>
             </div>
+            <div className="card bg-gradient-to-br from-cyan-50 to-sky-50">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600 mb-2">Unique Attendees</p>
+                  <p className="text-4xl font-bold text-gray-900">
+                    {analytics.uniqueAttendeeCount}
+                  </p>
+                </div>
+                <Users className="w-12 h-12 text-cyan-200" />
+              </div>
+            </div>
           </div>
 
           {/* Additional Statistics */}
@@ -242,6 +299,9 @@ const EventAnalyticsPage: React.FC = () => {
                   {analytics.guestCount > 0
                     ? `${((analytics.returningGuestCount / analytics.guestCount) * 100).toFixed(1)}% of guests are returning`
                     : 'No guests yet'}
+                </p>
+                <p className="text-sm text-gray-600">
+                  Attendance Rate: <span className="font-semibold">{analytics.attendanceRate.toFixed(1)}%</span>
                 </p>
               </div>
             </div>
@@ -419,6 +479,21 @@ const EventAnalyticsPage: React.FC = () => {
                     <div className="w-12 text-left text-sm text-gray-600">{count}</div>
                   </div>
                 ))}
+            </div>
+          </div>
+
+          <div className="card">
+            <h3 className="text-lg font-bold text-gray-900 mb-4">Per-Club Attendance Comparison</h3>
+            <div className="space-y-2">
+              {analytics.clubComparison.slice(0, 15).map((entry) => (
+                <div key={entry.club} className="flex items-center justify-between border border-gray-200 rounded-lg p-3">
+                  <p className="text-sm text-gray-900">{entry.club}</p>
+                  <p className="text-sm font-semibold text-gray-900">{entry.count}</p>
+                </div>
+              ))}
+              {analytics.clubComparison.length === 0 && (
+                <p className="text-sm text-gray-600">No club data captured yet.</p>
+              )}
             </div>
           </div>
         </div>

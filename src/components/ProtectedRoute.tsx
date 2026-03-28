@@ -4,10 +4,11 @@ import { Navigate } from 'react-router-dom';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
+  allowedRoles?: Array<'super_admin' | 'club_admin' | 'event_manager' | 'viewer'>;
 }
 
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const { currentUser, loading } = useAuth();
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles }) => {
+  const { currentUser, currentAdmin, loading } = useAuth();
 
   if (loading) {
     return (
@@ -24,6 +25,10 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
 
   if (!currentUser) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (allowedRoles && currentAdmin && !allowedRoles.includes(currentAdmin.role)) {
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <>{children}</>;

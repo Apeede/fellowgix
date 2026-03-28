@@ -1,11 +1,15 @@
 import {
     createUserWithEmailAndPassword,
+    getAuth,
     signOut as firebaseSignOut,
     onAuthStateChanged,
+    sendPasswordResetEmail,
     signInWithEmailAndPassword,
     User
 } from 'firebase/auth';
+import { deleteApp, initializeApp } from 'firebase/app';
 import { doc, getDoc, setDoc, Timestamp } from 'firebase/firestore';
+import { firebaseConfig } from '../../config/firebase-config';
 import { auth, db } from './firebase';
 
 export interface Admin {
@@ -14,13 +18,71 @@ export interface Admin {
   name: string;
   clubId: string;
   clubName: string;
-  role: 'super_admin' | 'admin';
+  role: 'super_admin' | 'club_admin' | 'event_manager' | 'viewer';
   createdAt: Date;
   lastLogin?: Date;
   isActive: boolean;
+  inviteStatus?: 'pending' | 'accepted';
+  invitedAt?: Date;
+  invitedBy?: string;
 }
 
 class AuthService {
+  async createAdminBySuperAdmin(input: {
+    email: string;
+    password: string;
+    name: string;
+    clubName: string;
+    role?: 'super_admin' | 'club_admin' | 'event_manager' | 'viewer';
+    sendInviteEmail?: boolean;
+  }): Promise<Admin> {
+    const role = input.role || 'club_admin';
+    const normalizedClubName = input.clubName.trim();
+    const clubId = this.toClubId(normalizedClubName);
+
+    // Create auth user in an isolated Firebase app so the current super admin session is preserved.
+    const secondaryApp = initializeApp(firebaseConfig, `secondary-${Date.now()}`);
+    const secondaryAuth = getAuth(secondaryApp);
+
+    try {
+      const userCredential = await createUserWithEmailAndPassword(
+        secondaryAuth,
+        input.email,
+        input.password
+      );
+
+      const adminData: Admin = {
+        id: userCredential.user.uid,
+        email: input.email.toLowerCase().trim(),
+        name: input.name,
+        clubId,
+        clubName: normalizedClubName,
+        role,
+        createdAt: new Date(),
+        isActive: true,
+        inviteStatus: input.sendInviteEmail ? 'pending' : 'accepted',
+        invitedAt: input.sendInviteEmail ? new Date() : undefined,
+      };
+
+      await setDoc(doc(db, 'admins', adminData.id), {
+        ...adminData,
+        createdAt: Timestamp.now(),
+        invitedAt: input.sendInviteEmail ? Timestamp.now() : null,
+      });
+
+      if (input.sendInviteEmail) {
+        await sendPasswordResetEmail(auth, adminData.email);
+      }
+
+      return adminData;
+    } catch (error) {
+      throw new Error(`Failed to create admin: ${(error instanceof Error ? error.message : String(error))}`);
+    } finally {
+      await firebaseSignOut(secondaryAuth).catch(() => undefined);
+      await deleteApp(secondaryApp).catch(() => undefined);
+    }
+  }
+
   /**
    * Register a new admin user
    */
@@ -28,7 +90,7 @@ class AuthService {
     email: string,
     password: string,
     name: string,
-    role: 'super_admin' | 'admin' = 'admin',
+    role: 'super_admin' | 'club_admin' | 'event_manager' | 'viewer' = 'club_admin',
     clubName = 'Default Club'
   ): Promise<Admin> {
     try {
@@ -41,7 +103,7 @@ class AuthService {
       // Create admin document in Firestore
       const adminData: Admin = {
         id: user.uid,
-        email,
+        email: email.toLowerCase().trim(),
         name,
         clubId,
         clubName: normalizedClubName,
@@ -66,7 +128,8 @@ class AuthService {
    */
   async loginAdmin(email: string, password: string): Promise<Admin> {
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const normalizedEmail = email.toLowerCase().trim();
+      const userCredential = await signInWithEmailAndPassword(auth, normalizedEmail, password);
       const user = userCredential.user;
 
       // Get admin data from Firestore
@@ -92,6 +155,7 @@ class AuthService {
           lastLogin: Timestamp.now(),
           clubId: normalized.clubId,
           clubName: normalized.clubName,
+          inviteStatus: normalized.inviteStatus === 'pending' ? 'accepted' : normalized.inviteStatus || 'accepted',
         },
         { merge: true }
       );
@@ -148,6 +212,10 @@ class AuthService {
     }
   }
 
+  async sendAdminPasswordReset(email: string): Promise<void> {
+    await sendPasswordResetEmail(auth, email.toLowerCase().trim());
+  }
+
   /**
    * Subscribe to auth state changes
    */
@@ -164,8 +232,17 @@ class AuthService {
   }
 
   private normalizeAdmin(admin: Admin, userId: string): Admin {
+    const mappedRole =
+      (admin.role as unknown as string) === 'admin'
+        ? 'club_admin'
+        : (admin.role || 'club_admin');
+
     if (admin.clubId && admin.clubName) {
-      return admin;
+      return {
+        ...admin,
+        role: mappedRole as Admin['role'],
+        email: admin.email?.toLowerCase?.() || '',
+      };
     }
 
     const fallbackClubName = admin.clubName || `${admin.name || 'Admin'} Club`;
@@ -173,6 +250,8 @@ class AuthService {
       ...admin,
       clubId: admin.clubId || `club-${userId}`,
       clubName: fallbackClubName,
+      role: mappedRole as Admin['role'],
+      email: admin.email?.toLowerCase?.() || '',
     };
   }
 }

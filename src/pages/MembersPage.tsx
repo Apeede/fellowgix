@@ -1,4 +1,5 @@
 import { useAuth } from '@context/useAuth';
+import { auditLogService } from '@services/firebase/audit-log-service';
 import { memberService } from '@services/firebase/member-service';
 import { CreateMemberInput, Member } from '@types/member';
 import { AlertCircle, Loader, Plus, Search, UserCheck, UserMinus, Users, X } from 'lucide-react';
@@ -87,6 +88,17 @@ const MembersPage: React.FC = () => {
         currentAdmin.clubId,
         currentAdmin.id
       );
+      await auditLogService.log({
+        action: 'MEMBER_CREATED',
+        actorId: currentAdmin.id,
+        actorEmail: currentAdmin.email,
+        actorRole: currentAdmin.role,
+        actorClubId: currentAdmin.clubId,
+        targetType: 'member',
+        targetId: newMember.id,
+        targetClubId: currentAdmin.clubId,
+        details: { email: newMember.email, phone: newMember.phone },
+      });
       setMembers((prev) => [newMember, ...prev]);
       setFormData(emptyForm);
       setShowForm(false);
@@ -102,6 +114,19 @@ const MembersPage: React.FC = () => {
     if (!window.confirm(`Deactivate "${member.name}"? They won't appear in check-in searches.`)) return;
     try {
       await memberService.updateMember(member.id, { isActive: false });
+      if (currentAdmin) {
+        await auditLogService.log({
+          action: 'MEMBER_DEACTIVATED',
+          actorId: currentAdmin.id,
+          actorEmail: currentAdmin.email,
+          actorRole: currentAdmin.role,
+          actorClubId: currentAdmin.clubId,
+          targetType: 'member',
+          targetId: member.id,
+          targetClubId: currentAdmin.clubId,
+          details: { email: member.email },
+        });
+      }
       setMembers((prev) => prev.filter((m) => m.id !== member.id));
       toast.success(`${member.name} deactivated`);
     } catch (error) {
