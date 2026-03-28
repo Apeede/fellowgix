@@ -97,7 +97,7 @@ const EventsPage: React.FC = () => {
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center">
             <div className="flex items-center gap-4">
               <button
                 type="button"
@@ -107,20 +107,20 @@ const EventsPage: React.FC = () => {
               >
                 <ArrowLeft className="w-6 h-6 text-gray-700" />
               </button>
-              <h1 className="text-3xl font-bold text-gray-900">Events</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Events</h1>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex w-full sm:w-auto items-center gap-2">
               <button
                 type="button"
                 onClick={() => navigate('/dashboard')}
-                className="btn-outline"
+                className="btn-outline flex-1 sm:flex-none"
               >
                 Dashboard
               </button>
               <button
                 type="button"
                 onClick={() => navigate('/events/create')}
-                className="btn-primary flex items-center gap-2"
+                className="btn-primary flex-1 sm:flex-none flex items-center justify-center gap-2"
               >
                 <Plus className="w-5 h-5" />
                 Create Event
@@ -132,8 +132,8 @@ const EventsPage: React.FC = () => {
 
       {/* Filter Tabs */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex gap-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 overflow-x-auto">
+          <div className="flex gap-6 sm:gap-8 min-w-max">
             {(['upcoming', 'active', 'all'] as const).map((tab) => (
               <button
                 type="button"

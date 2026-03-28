@@ -1,6 +1,8 @@
 import { db } from '@services/firebase/firebase';
 import {
     collection,
+    doc,
+    getDoc,
     getDocs,
     orderBy,
     query,
@@ -20,6 +22,13 @@ export interface AttendanceAnalytics {
     rotaractor: number;
     non_rotaractor: number;
   };
+  clubsVisited: {
+    rotary: string[];
+    rotaract: string[];
+    member: string[];
+    all: string[];
+  };
+  attendeeDetails: AttendanceListItem[];
 }
 
 export interface AttendanceListItem {
@@ -45,7 +54,10 @@ export class AnalyticsService {
       );
 
       const snapshot = await getDocs(attendanceQuery);
-      const records = snapshot.docs.map((doc) => doc.data());
+      const records = snapshot.docs.map((attendanceDoc) => ({
+        id: attendanceDoc.id,
+        ...attendanceDoc.data(),
+      }));
 
       // Calculate statistics
       const totalAttendees = records.length;
@@ -72,24 +84,83 @@ export class AnalyticsService {
         non_rotaractor: 0,
       };
 
-      // For guest type breakdown, we need to fetch guest data
+      const rotaryClubs = new Set<string>();
+      const rotaractClubs = new Set<string>();
+      const memberClubs = new Set<string>();
+      const allClubs = new Set<string>();
+      const attendeeDetails: AttendanceListItem[] = [];
+
+      const guestCache = new Map<string, any>();
+      const memberCache = new Map<string, any>();
+
+      // Build enriched attendee details and club analytics
       for (const record of records) {
-        if (record.type === 'guest') {
-          try {
-            const guestQuery = query(
-              collection(db, 'guests'),
-              where('email', '==', record.email)
-            );
-            const guestSnapshot = await getDocs(guestQuery);
-            if (!guestSnapshot.empty) {
-              const guestData = guestSnapshot.docs[0].data();
-              const guestType = guestData.type || 'non_rotaractor';
-              guestTypeBreakdown[guestType as keyof typeof guestTypeBreakdown]++;
+        const personEmail = record.personEmail || record.email || '';
+        const personPhone = record.personPhone || record.phone || '';
+        const checkedInAt =
+          record.checkedInAt instanceof Timestamp
+            ? record.checkedInAt.toDate()
+            : new Date(record.checkedInAt);
+
+        let club = record.club || '';
+
+        if (record.type === 'guest' && record.personId) {
+          if (!guestCache.has(record.personId)) {
+            try {
+              const guestDoc = await getDoc(doc(db, 'guests', record.personId));
+              guestCache.set(record.personId, guestDoc.exists() ? guestDoc.data() : null);
+            } catch {
+              guestCache.set(record.personId, null);
             }
-          } catch (error) {
-            // Skip if guest not found
+          }
+
+          const guestData = guestCache.get(record.personId);
+          const guestType = (guestData?.type || 'non_rotaractor') as
+            | 'rotarian'
+            | 'rotaractor'
+            | 'non_rotaractor';
+          const guestClub = (guestData?.club || club || '').trim();
+          club = guestClub;
+
+          guestTypeBreakdown[guestType]++;
+
+          if (guestClub) {
+            allClubs.add(guestClub);
+            if (guestType === 'rotarian') rotaryClubs.add(guestClub);
+            if (guestType === 'rotaractor') rotaractClubs.add(guestClub);
           }
         }
+
+        if (record.type === 'member' && record.personId) {
+          if (!memberCache.has(record.personId)) {
+            try {
+              const memberDoc = await getDoc(doc(db, 'members', record.personId));
+              memberCache.set(record.personId, memberDoc.exists() ? memberDoc.data() : null);
+            } catch {
+              memberCache.set(record.personId, null);
+            }
+          }
+
+          const memberData = memberCache.get(record.personId);
+          const memberClub = (memberData?.club || club || '').trim();
+          club = memberClub;
+
+          if (memberClub) {
+            memberClubs.add(memberClub);
+            allClubs.add(memberClub);
+          }
+        }
+
+        attendeeDetails.push({
+          id: record.id,
+          personName: record.personName,
+          email: personEmail,
+          phone: personPhone,
+          type: record.type,
+          checkedInAt,
+          club,
+          isDuplicate: record.isDuplicate || false,
+        });
       }
 
       return {
@@ -100,6 +171,15 @@ export class AnalyticsService {
         duplicateCheckInCount,
         checkInByHour,
         guestTypeBreakdown,
+        clubsVisited: {
+          rotary: Array.from(rotaryClubs).sort(),
+          rotaract: Array.from(rotaractClubs).sort(),
+          member: Array.from(memberClubs).sort(),
+          all: Array.from(allClubs).sort(),
+        },
+        attendeeDetails: attendeeDetails.sort(
+          (a, b) => b.checkedInAt.getTime() - a.checkedInAt.getTime()
+        ),
       };
     } catch (error) {
       console.error('Failed to get event analytics:', error);
@@ -124,8 +204,8 @@ export class AnalyticsService {
         return {
           id: doc.id,
           personName: data.personName,
-          email: data.email,
-          phone: data.phone,
+          email: data.personEmail || data.email || '',
+          phone: data.personPhone || data.phone || '',
           type: data.type,
           checkedInAt: data.checkedInAt instanceof Timestamp 
             ? data.checkedInAt.toDate() 

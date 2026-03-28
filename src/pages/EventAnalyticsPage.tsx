@@ -106,8 +106,8 @@ const EventAnalyticsPage: React.FC = () => {
       {/* Header */}
       <div className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start sm:items-center gap-4">
               <button
                 type="button"
                 onClick={() => navigate('/events')}
@@ -116,8 +116,8 @@ const EventAnalyticsPage: React.FC = () => {
               >
                 <ArrowLeft className="w-6 h-6 text-gray-700" />
               </button>
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">{event.name}</h1>
+              <div className="min-w-0">
+                <h1 className="text-xl sm:text-3xl font-bold text-gray-900 break-words">{event.name}</h1>
                 <p className="text-gray-600 mt-1">Event Analytics & Insights</p>
               </div>
             </div>
@@ -125,7 +125,7 @@ const EventAnalyticsPage: React.FC = () => {
             <button
               type="button"
               onClick={handleViewAttendees}
-              className="btn-primary flex items-center gap-2"
+              className="btn-primary w-full sm:w-auto flex items-center justify-center gap-2"
             >
               <Eye className="w-4 h-4" />
               View Full List
@@ -286,6 +286,115 @@ const EventAnalyticsPage: React.FC = () => {
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Clubs Visited */}
+          <div className="card">
+            <h3 className="text-lg font-bold text-gray-900 mb-6">Clubs Represented</h3>
+            <div className="grid md:grid-cols-3 gap-6">
+              <div>
+                <p className="text-sm font-semibold text-gray-600 mb-3">Rotary Clubs</p>
+                {analytics.clubsVisited.rotary.length > 0 ? (
+                  <div className="space-y-2">
+                    {analytics.clubsVisited.rotary.map((club) => (
+                      <div
+                        key={`rotary-${club}`}
+                        className="px-3 py-2 bg-blue-50 text-blue-900 rounded-lg text-sm"
+                      >
+                        {club}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500">No Rotary clubs recorded</p>
+                )}
+              </div>
+
+              <div>
+                <p className="text-sm font-semibold text-gray-600 mb-3">Rotaract Clubs</p>
+                {analytics.clubsVisited.rotaract.length > 0 ? (
+                  <div className="space-y-2">
+                    {analytics.clubsVisited.rotaract.map((club) => (
+                      <div
+                        key={`rotaract-${club}`}
+                        className="px-3 py-2 bg-green-50 text-green-900 rounded-lg text-sm"
+                      >
+                        {club}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500">No Rotaract clubs recorded</p>
+                )}
+              </div>
+
+              <div>
+                <p className="text-sm font-semibold text-gray-600 mb-3">Member Clubs</p>
+                {analytics.clubsVisited.member.length > 0 ? (
+                  <div className="space-y-2">
+                    {analytics.clubsVisited.member.map((club) => (
+                      <div
+                        key={`member-${club}`}
+                        className="px-3 py-2 bg-purple-50 text-purple-900 rounded-lg text-sm"
+                      >
+                        {club}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500">No member clubs recorded</p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Attendee Details */}
+          <div className="card">
+            <h3 className="text-lg font-bold text-gray-900 mb-6">Attendee Details</h3>
+            {analytics.attendeeDetails.length === 0 ? (
+              <p className="text-sm text-gray-500">No attendee details available yet.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Name</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Email</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Phone</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Type</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Club</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Time</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {analytics.attendeeDetails.map((attendee) => (
+                      <tr key={attendee.id} className="hover:bg-gray-50">
+                        <td className="px-4 py-3 text-sm font-medium text-gray-900">{attendee.personName}</td>
+                        <td className="px-4 py-3 text-sm text-gray-700">{attendee.email || '-'}</td>
+                        <td className="px-4 py-3 text-sm text-gray-700">{attendee.phone || '-'}</td>
+                        <td className="px-4 py-3 text-sm capitalize text-gray-700">{attendee.type}</td>
+                        <td className="px-4 py-3 text-sm text-gray-700">{attendee.club || '-'}</td>
+                        <td className="px-4 py-3 text-sm text-gray-700">
+                          {attendee.checkedInAt.toLocaleString('en-US')}
+                        </td>
+                        <td className="px-4 py-3 text-sm">
+                          {attendee.isDuplicate ? (
+                            <span className="px-2 py-1 rounded-full bg-orange-100 text-orange-800 text-xs font-medium">
+                              Duplicate
+                            </span>
+                          ) : (
+                            <span className="px-2 py-1 rounded-full bg-green-100 text-green-800 text-xs font-medium">
+                              Valid
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
 
           {/* Check-in Timeline */}

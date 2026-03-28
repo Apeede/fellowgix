@@ -79,7 +79,7 @@ const EventQRCodePage: React.FC = () => {
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-4">
               <button
                 type="button"
@@ -89,12 +89,12 @@ const EventQRCodePage: React.FC = () => {
               >
                 <ArrowLeft className="w-6 h-6 text-gray-700" />
               </button>
-              <h1 className="text-2xl font-bold text-gray-900">Event QR Code</h1>
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Event QR Code</h1>
             </div>
             <button
               type="button"
               onClick={() => setShowDetails(!showDetails)}
-              className="btn-secondary flex items-center gap-2 py-2"
+              className="btn-secondary w-full sm:w-auto flex items-center justify-center gap-2 py-2"
             >
               {showDetails ? (
                 <>
@@ -152,7 +152,7 @@ const EventQRCodePage: React.FC = () => {
                   <img
                     src={event.qrCode}
                     alt="Event QR Code"
-                    className="w-96 h-96 object-contain"
+                    className="w-full max-w-[280px] sm:max-w-[360px] md:max-w-[420px] aspect-square object-contain"
                   />
                 </div>
 
@@ -217,7 +217,7 @@ const EventQRCodePage: React.FC = () => {
             )}
 
             {/* Action Buttons */}
-            <div className="flex gap-4">
+            <div className="flex flex-col sm:flex-row gap-4">
               <button
                 type="button"
                 onClick={handlePrint}

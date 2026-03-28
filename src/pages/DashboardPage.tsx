@@ -71,12 +71,12 @@ const DashboardPage: React.FC = () => {
       {/* Navigation Bar */}
       <nav className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
             <div className="flex items-center gap-3">
-              <BarChart3 className="w-8 h-8 text-primary-700" />
-              <h1 className="text-2xl font-bold text-gray-900">Rotaract Attendance</h1>
+              <BarChart3 className="w-7 h-7 sm:w-8 sm:h-8 text-primary-700" />
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Rotaract Attendance</h1>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center justify-between sm:justify-start gap-3 sm:gap-4">
               <div>
                 <p className="text-sm font-medium text-gray-900">{currentAdmin?.name}</p>
                 <p className="text-xs text-gray-500">{currentAdmin?.email}</p>
@@ -95,10 +95,10 @@ const DashboardPage: React.FC = () => {
       </nav>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
         {/* Welcome Section */}
-        <div className="mb-12">
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">
+        <div className="mb-8 sm:mb-12">
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
             Welcome back, {currentAdmin?.name}!
           </h2>
           <p className="text-gray-600">Manage your Rotaract events and track attendance</p>
@@ -169,7 +169,7 @@ const DashboardPage: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Event Management Card */}
           <div
-            onClick={handleOpenAnalytics}
+            onClick={() => navigate('/events')}
             className="card cursor-pointer hover:shadow-lg hover:border-primary-600 transition-all border-2 border-transparent"
           >
             <div className="flex items-start justify-between mb-4">

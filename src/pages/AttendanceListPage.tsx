@@ -108,8 +108,8 @@ const AttendanceListPage: React.FC = () => {
       {/* Header */}
       <div className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start sm:items-center gap-4">
               <button
                 type="button"
                 onClick={() => navigate(-1)}
@@ -118,8 +118,8 @@ const AttendanceListPage: React.FC = () => {
               >
                 <ArrowLeft className="w-6 h-6 text-gray-700" />
               </button>
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">Attendance List</h1>
+              <div className="min-w-0">
+                <h1 className="text-xl sm:text-3xl font-bold text-gray-900">Attendance List</h1>
                 <p className="text-gray-600 mt-1">{eventName}</p>
               </div>
             </div>
@@ -128,7 +128,7 @@ const AttendanceListPage: React.FC = () => {
               type="button"
               onClick={handleExport}
               disabled={isLoading || isExporting || attendees.length === 0}
-              className="btn-primary flex items-center gap-2"
+              className="btn-primary w-full sm:w-auto flex items-center justify-center gap-2"
             >
               {isExporting ? (
                 <Loader className="w-4 h-4 animate-spin" />
