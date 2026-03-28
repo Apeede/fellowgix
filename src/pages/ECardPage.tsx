@@ -31,17 +31,6 @@ const ECardPage: React.FC = () => {
   const [isGenerating, setIsGenerating] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
 
-  // Validate state
-  useEffect(() => {
-    if (!state?.eventId || !state?.attendeeName) {
-      toast.error('Invalid e-card data');
-      navigate('/scan', { replace: true });
-      return;
-    }
-
-    loadEventAndGenerateECard();
-  }, [state?.eventId, state?.attendeeName, navigate, loadEventAndGenerateECard]);
-
   const loadEventAndGenerateECard = useCallback(async () => {
     try {
       setIsGenerating(true);
@@ -89,6 +78,17 @@ const ECardPage: React.FC = () => {
       setIsGenerating(false);
     }
   }, [state?.eventId, state?.attendeeName, state?.attendeeEmail, state?.attendeePhone, state?.club, state?.type, navigate]);
+
+  // Validate state
+  useEffect(() => {
+    if (!state?.eventId || !state?.attendeeName) {
+      toast.error('Invalid e-card data');
+      navigate('/scan', { replace: true });
+      return;
+    }
+
+    loadEventAndGenerateECard();
+  }, [state?.eventId, state?.attendeeName, navigate, loadEventAndGenerateECard]);
 
   const handleDownload = async () => {
     if (!eCardImage) return;
