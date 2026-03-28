@@ -22,7 +22,7 @@ class EventService {
   /**
    * Create a new event with auto-generated QR code
    */
-  async createEvent(input: CreateEventInput, adminId: string): Promise<Event> {
+  async createEvent(input: CreateEventInput, adminId: string, clubId: string, clubName?: string): Promise<Event> {
     try {
       // Generate unique event ID and QR code
       const eventId = qrCodeGeneratorService.generateEventId();
@@ -40,6 +40,8 @@ class EventService {
         qrCode: qrCodeDataUrl,
         qrCodeUrl: '', // Can be set later when uploaded to storage
         createdBy: adminId,
+        clubId,
+        clubName: clubName || '',
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
         isActive: true,
@@ -63,9 +65,11 @@ class EventService {
   /**
    * Get all events for an admin
    */
-  async getEventsByAdmin(adminId: string, includeInactive = false): Promise<Event[]> {
+  async getEventsByAdmin(adminId: string, includeInactive = false, clubId?: string): Promise<Event[]> {
     try {
-      const constraints: QueryConstraint[] = [where('createdBy', '==', adminId)];
+      const constraints: QueryConstraint[] = [
+        clubId ? where('clubId', '==', clubId) : where('createdBy', '==', adminId),
+      ];
 
       if (!includeInactive) {
         constraints.push(where('isActive', '==', true));
@@ -93,12 +97,12 @@ class EventService {
   /**
    * Get upcoming events for an admin
    */
-  async getUpcomingEvents(adminId: string): Promise<Event[]> {
+  async getUpcomingEvents(adminId: string, clubId?: string): Promise<Event[]> {
     try {
       const today = new Date().toISOString().split('T')[0];
       const q = query(
         collection(db, this.collectionName),
-        where('createdBy', '==', adminId),
+        clubId ? where('clubId', '==', clubId) : where('createdBy', '==', adminId),
         where('isActive', '==', true),
         where('date', '>=', today),
         orderBy('date', 'asc')
@@ -185,11 +189,14 @@ class EventService {
   /**
    * Get event statistics for admin dashboard
    */
-  async getEventStats(adminId: string): Promise<EventStats> {
+  async getEventStats(adminId: string, clubId?: string): Promise<EventStats> {
     try {
       // Get all events for this admin
       const allEvents = await getDocs(
-        query(collection(db, this.collectionName), where('createdBy', '==', adminId))
+        query(
+          collection(db, this.collectionName),
+          clubId ? where('clubId', '==', clubId) : where('createdBy', '==', adminId)
+        )
       );
 
       const activeEvents = allEvents.docs.filter((doc) => doc.data().isActive);

@@ -1,8 +1,9 @@
 import { attendanceService } from '@services/firebase/attendance-service';
+import { eventService } from '@services/firebase/event-service';
 import { memberService } from '@services/firebase/member-service';
 import { Member } from '@types/member';
 import { AlertCircle, ArrowLeft, Check, Loader, Search } from 'lucide-react';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useNavigate, useParams } from 'react-router-dom';
 
@@ -16,6 +17,20 @@ const MemberCheckInPage: React.FC = () => {
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [isCheckingIn, setIsCheckingIn] = useState(false);
   const [checkInResult, setCheckInResult] = useState<{ success: boolean; isDuplicate: boolean; message: string } | null>(null);
+  const [eventClubId, setEventClubId] = useState<string>('');
+
+  useEffect(() => {
+    const loadEventClub = async () => {
+      if (!eventId) return;
+      try {
+        const event = await eventService.getEventById(eventId);
+        setEventClubId(event?.clubId || '');
+      } catch (error) {
+        setEventClubId('');
+      }
+    };
+    loadEventClub();
+  }, [eventId]);
 
   const handleSearch = async (term: string) => {
     setSearchTerm(term);
@@ -27,7 +42,11 @@ const MemberCheckInPage: React.FC = () => {
 
     setIsSearching(true);
     try {
-      const results = await memberService.searchMembers(term);
+      if (!eventClubId) {
+        setSearchResults([]);
+        return;
+      }
+      const results = await memberService.searchMembers(term, eventClubId);
       setSearchResults(results);
     } catch (error) {
       toast.error('Failed to search members');
@@ -57,7 +76,8 @@ const MemberCheckInPage: React.FC = () => {
         selectedMember.id,
         selectedMember.name,
         selectedMember.email,
-        selectedMember.phone
+        selectedMember.phone,
+        eventClubId
       );
 
       setCheckInResult(result);

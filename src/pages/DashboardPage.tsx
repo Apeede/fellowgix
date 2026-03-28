@@ -16,7 +16,7 @@ const DashboardPage: React.FC = () => {
     if (!currentAdmin) return;
 
     try {
-      const data = await eventService.getEventStats(currentAdmin.id);
+      const data = await eventService.getEventStats(currentAdmin.id, currentAdmin.clubId);
       setStats(data);
     } catch (error) {
       console.error('Failed to load stats:', error);
@@ -44,13 +44,13 @@ const DashboardPage: React.FC = () => {
 
     try {
       // Prefer upcoming events, but fall back to any available active event.
-      const upcomingEvents = await eventService.getUpcomingEvents(currentAdmin.id);
+      const upcomingEvents = await eventService.getUpcomingEvents(currentAdmin.id, currentAdmin.clubId);
       if (upcomingEvents.length > 0 && upcomingEvents[0].id) {
         navigate(`/events/${upcomingEvents[0].id}/analytics`);
         return;
       }
 
-      const allEvents = await eventService.getEventsByAdmin(currentAdmin.id, true);
+      const allEvents = await eventService.getEventsByAdmin(currentAdmin.id, true, currentAdmin.clubId);
       const activeEvent = allEvents.find((event) => event.isActive) || allEvents[0];
 
       if (activeEvent?.id) {

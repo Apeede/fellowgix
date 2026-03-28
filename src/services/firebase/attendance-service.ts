@@ -25,7 +25,8 @@ class AttendanceService {
     personId: string,
     personName: string,
     personEmail: string,
-    personPhone: string
+    personPhone: string,
+    clubId?: string
   ): Promise<CheckInResponse> {
     try {
       // Check for duplicate check-in (same person, same event, within 5 minutes)
@@ -45,6 +46,7 @@ class AttendanceService {
       // Record attendance
       const attendanceData = {
         eventId,
+        clubId: clubId || '',
         type,
         personId,
         personName,

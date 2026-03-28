@@ -32,9 +32,11 @@ class MemberService {
   /**
    * Create a new member
    */
-  async createMember(input: CreateMemberInput): Promise<Member> {
+  async createMember(input: CreateMemberInput, clubId: string, createdByAdminId: string): Promise<Member> {
     try {
       const memberData = {
+        clubId,
+        createdByAdminId,
         name: input.name,
         email: input.email,
         phone: input.phone,
@@ -58,10 +60,14 @@ class MemberService {
   /**
    * Search members by name or email
    */
-  async searchMembers(searchTerm: string): Promise<Member[]> {
+  async searchMembers(searchTerm: string, clubId: string): Promise<Member[]> {
     try {
       // Search by email (exact or partial)
-      const constraints = [where('email', '>=', searchTerm), where('email', '<=', searchTerm + '\uf8ff')];
+      const constraints = [
+        where('clubId', '==', clubId),
+        where('email', '>=', searchTerm),
+        where('email', '<=', searchTerm + '\uf8ff'),
+      ];
 
       const q = query(collection(db, this.collectionName), ...constraints);
       const querySnapshot = await getDocs(q);
@@ -71,6 +77,7 @@ class MemberService {
       // Also search by name (case-insensitive)
       const nameQuery = query(
         collection(db, this.collectionName),
+        where('clubId', '==', clubId),
         where('name', '>=', searchTerm),
         where('name', '<=', searchTerm + '\uf8ff')
       );
@@ -142,9 +149,13 @@ class MemberService {
   /**
    * Get all active members
    */
-  async getAllActiveMembers(): Promise<Member[]> {
+  async getAllActiveMembers(clubId: string): Promise<Member[]> {
     try {
-      const q = query(collection(db, this.collectionName), where('isActive', '==', true));
+      const q = query(
+        collection(db, this.collectionName),
+        where('clubId', '==', clubId),
+        where('isActive', '==', true)
+      );
       const querySnapshot = await getDocs(q);
 
       return querySnapshot.docs.map((doc) => this.convertMemberDoc(doc.data(), doc.id));

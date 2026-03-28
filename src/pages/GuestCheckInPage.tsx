@@ -1,7 +1,8 @@
 import { attendanceService } from '@services/firebase/attendance-service';
+import { eventService } from '@services/firebase/event-service';
 import { guestService } from '@services/firebase/guest-service';
 import { ArrowLeft, Check, Loader } from 'lucide-react';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useNavigate, useParams } from 'react-router-dom';
 
@@ -28,6 +29,20 @@ const GuestCheckInPage: React.FC = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [checkInResult, setCheckInResult] = useState<CheckInResult | null>(null);
+  const [eventClubId, setEventClubId] = useState<string>('');
+
+  useEffect(() => {
+    const loadEventClub = async () => {
+      if (!eventId) return;
+      try {
+        const event = await eventService.getEventById(eventId);
+        setEventClubId(event?.clubId || '');
+      } catch (error) {
+        setEventClubId('');
+      }
+    };
+    loadEventClub();
+  }, [eventId]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -80,10 +95,15 @@ const GuestCheckInPage: React.FC = () => {
       return;
     }
 
+    if (!eventClubId) {
+      toast.error('Event club information is missing');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       // Check in guest (creates if new, updates if returning)
-      const guestData = await guestService.checkInGuest(formData);
+      const guestData = await guestService.checkInGuest(formData, eventClubId);
 
       // Record attendance
       const result = await attendanceService.recordAttendance(
@@ -92,7 +112,8 @@ const GuestCheckInPage: React.FC = () => {
         guestData.guest.id,
         guestData.guest.name,
         guestData.guest.email,
-        guestData.guest.phone
+        guestData.guest.phone,
+        eventClubId
       );
 
       setCheckInResult({

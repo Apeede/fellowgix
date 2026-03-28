@@ -1,59 +1,112 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Allow read/write access on admins - special handling for initial setup
-    match /admins/{document=**} {
-      // Allow authenticated users to read their own doc (needed for login flow)
-      // OR allow admins to read all docs
-      allow read: if request.auth != null && (
-        request.auth.uid == document || 
-        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function adminRef() {
+      return /databases/$(database)/documents/admins/$(request.auth.uid);
+    }
+
+    function isAdmin() {
+      return isSignedIn() && exists(adminRef());
+    }
+
+    function adminData() {
+      return get(adminRef()).data;
+    }
+
+    function isSuperAdmin() {
+      return isAdmin() && adminData().role == 'super_admin';
+    }
+
+    function sameClub(clubId) {
+      return isAdmin() && clubId == adminData().clubId;
+    }
+
+    function hasRequiredAttendanceFields() {
+      return request.resource.data.keys().hasAll([
+        'eventId',
+        'clubId',
+        'type',
+        'personId',
+        'personName',
+        'personEmail',
+        'personPhone',
+        'checkedInAt'
+      ]);
+    }
+
+    function validPublicAttendanceCreate() {
+      return hasRequiredAttendanceFields()
+        && request.resource.data.eventId is string
+        && request.resource.data.clubId is string
+        && request.resource.data.type in ['member', 'guest']
+        && exists(/databases/$(database)/documents/events/$(request.resource.data.eventId))
+        && get(/databases/$(database)/documents/events/$(request.resource.data.eventId)).data.clubId == request.resource.data.clubId
+        && get(/databases/$(database)/documents/events/$(request.resource.data.eventId)).data.isActive == true;
+    }
+
+    match /admins/{adminId} {
+      allow read: if isAdmin() && (
+        adminId == request.auth.uid ||
+        (isSuperAdmin() && resource.data.clubId == adminData().clubId)
       );
-      
-      // Allow create if:
-      // 1. No admins exist yet (first-time setup), OR
-      // 2. User is authenticated and is an existing admin
-      allow create: if 
-        !exists(/databases/$(database)/documents/admins/document) || 
-        (request.auth != null && exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
-      
-      // Only existing admins can update/delete
-      allow update, delete: if request.auth != null && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+
+      allow create: if isSignedIn() && request.auth.uid == adminId && (
+        (
+          !exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+          request.resource.data.role == 'super_admin'
+        ) ||
+        (
+          isSuperAdmin() &&
+          request.resource.data.clubId == adminData().clubId
+        )
+      );
+
+      allow update, delete: if isAdmin() && (
+        adminId == request.auth.uid ||
+        (isSuperAdmin() && resource.data.clubId == adminData().clubId)
+      );
     }
-    
-    match /members/{document=**} {
-      // Anyone can read members
+
+    match /members/{memberId} {
+      // Public read is required for member self-check-in search flow.
       allow read: if true;
-      // Only admins can create/update members
-      allow create, update: if request.auth != null && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
-      allow delete: if request.auth != null && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      allow create: if isAdmin() && sameClub(request.resource.data.clubId);
+      allow update: if isAdmin()
+        && sameClub(resource.data.clubId)
+        && request.resource.data.clubId == resource.data.clubId;
+      allow delete: if isAdmin() && sameClub(resource.data.clubId);
     }
-    
-    match /events/{document=**} {
-      // Anyone can read events
+
+    match /events/{eventId} {
+      // Public read is required for scanner/check-in event resolution.
       allow read: if true;
-      // Only admins can write events
-      allow create, update, delete: if request.auth != null && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      allow create: if isAdmin() && sameClub(request.resource.data.clubId);
+      allow update: if isAdmin()
+        && sameClub(resource.data.clubId)
+        && request.resource.data.clubId == resource.data.clubId;
+      allow delete: if isAdmin() && sameClub(resource.data.clubId);
     }
-    
-    match /attendance/{document=**} {
-      // Anyone can read attendance records
-      allow read: if true;
-      // Public check-in routes must be able to create attendance documents without authentication
-      allow create: if true;
-      // Only admins can update/delete attendance records
-      allow update, delete: if request.auth != null && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+
+    match /attendance/{attendanceId} {
+      allow read: if isAdmin() && sameClub(resource.data.clubId);
+      // Public check-in allowed only when request club matches active event club.
+      allow create: if validPublicAttendanceCreate();
+      allow update, delete: if isAdmin() && sameClub(resource.data.clubId);
     }
-    
-    match /guests/{document=**} {
-      // Anyone can read guest records
-      allow read: if true;
-      // Anyone can create guest records (no auth required for check-in)
-      allow create: if true;
+
+    match /guests/{guestId} {
+      allow read: if isAdmin() && sameClub(resource.data.clubId);
+
+      // Public create for check-in flow. Club must be provided.
+      allow create: if request.resource.data.clubId is string && request.resource.data.clubId.size() > 0;
 
       function isGuestCheckInUpdate() {
         return request.auth == null
+          && request.resource.data.clubId == resource.data.clubId
           && request.resource.data.name == resource.data.name
           && request.resource.data.email == resource.data.email
           && request.resource.data.phone == resource.data.phone
@@ -65,12 +118,10 @@ service cloud.firestore {
           && request.resource.data.updatedAt is timestamp;
       }
 
-      // Allow returning guest update during check-in, or allow admins to manage guest records
-      allow update: if isGuestCheckInUpdate() || (request.auth != null && exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
-      allow delete: if request.auth != null && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      allow update: if isGuestCheckInUpdate() || (isAdmin() && sameClub(resource.data.clubId));
+      allow delete: if isAdmin() && sameClub(resource.data.clubId);
     }
 
-    // Default deny all
     match /{document=**} {
       allow read, write: if false;
     }

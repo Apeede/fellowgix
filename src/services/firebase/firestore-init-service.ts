@@ -23,6 +23,8 @@ const FIRESTORE_SCHEMA: Record<string, FirestoreCollectionSchema> = {
       id: 'uid_of_admin',
       email: 'admin@example.com',
       name: 'Admin Name',
+      clubId: 'rotaract-club-name',
+      clubName: 'Rotaract Club Name',
       role: 'super_admin', // super_admin or admin
       createdAt: new Date(),
       lastLogin: new Date(),
@@ -150,6 +152,8 @@ class FirestoreInitService {
         batch.set(adminRef, {
           email: 'admin@rotaract.local',
           name: 'Default Admin',
+          clubId: 'default-club',
+          clubName: 'Default Club',
           role: 'super_admin',
           createdAt: new Date(),
           isActive: true,

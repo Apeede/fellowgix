@@ -84,7 +84,12 @@ const CreateEventPage: React.FC = () => {
 
     setIsLoading(true);
     try {
-      const event = await eventService.createEvent(formData, currentAdmin.id);
+      const event = await eventService.createEvent(
+        formData,
+        currentAdmin.id,
+        currentAdmin.clubId,
+        currentAdmin.clubName
+      );
       toast.success(`Event "${event.name}" created successfully!`);
       navigate('/events', { state: { newEventId: event.id } });
     } catch (error) {

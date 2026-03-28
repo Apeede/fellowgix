@@ -8,7 +8,7 @@ export interface AuthContextType {
   loading: boolean;
   error: string | null;
   loginAdmin: (email: string, password: string) => Promise<void>;
-  registerAdmin: (email: string, password: string, name: string) => Promise<void>;
+  registerAdmin: (email: string, password: string, name: string, clubName?: string) => Promise<void>;
   signOut: () => Promise<void>;
   clearError: () => void;
 }

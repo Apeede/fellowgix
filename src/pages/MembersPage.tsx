@@ -1,3 +1,4 @@
+import { useAuth } from '@context/useAuth';
 import { memberService } from '@services/firebase/member-service';
 import { CreateMemberInput, Member } from '@types/member';
 import { AlertCircle, Loader, Plus, Search, UserCheck, UserMinus, Users, X } from 'lucide-react';
@@ -15,6 +16,7 @@ const emptyForm: CreateMemberInput = {
 
 const MembersPage: React.FC = () => {
   const navigate = useNavigate();
+  const { currentAdmin } = useAuth();
   const [members, setMembers] = useState<Member[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -24,9 +26,10 @@ const MembersPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const loadMembers = useCallback(async () => {
+    if (!currentAdmin?.clubId) return;
     setIsLoading(true);
     try {
-      const data = await memberService.getAllActiveMembers();
+      const data = await memberService.getAllActiveMembers(currentAdmin.clubId);
       setMembers(data);
     } catch (error) {
       toast.error('Failed to load members');
@@ -34,7 +37,7 @@ const MembersPage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [currentAdmin?.clubId]);
 
   useEffect(() => {
     loadMembers();
@@ -74,7 +77,16 @@ const MembersPage: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      const newMember = await memberService.createMember(formData);
+      if (!currentAdmin?.clubId) {
+        toast.error('Admin club not configured');
+        return;
+      }
+
+      const newMember = await memberService.createMember(
+        formData,
+        currentAdmin.clubId,
+        currentAdmin.id
+      );
       setMembers((prev) => [newMember, ...prev]);
       setFormData(emptyForm);
       setShowForm(false);

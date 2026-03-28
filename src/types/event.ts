@@ -12,6 +12,8 @@ export interface Event {
   qrCode: string; // Base64 encoded or URL
   qrCodeUrl?: string; // Downloadable URL
   createdBy: string; // Admin user ID
+  clubId: string;
+  clubName?: string;
   createdAt: Date;
   updatedAt: Date;
   isActive: boolean;

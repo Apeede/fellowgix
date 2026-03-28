@@ -33,13 +33,13 @@ class GuestService {
    * Create or get existing guest
    * Returns the guest and whether they are returning
    */
-  async checkInGuest(input: CreateGuestInput): Promise<GuestCheckInData> {
+  async checkInGuest(input: CreateGuestInput, clubId: string): Promise<GuestCheckInData> {
     try {
       // Check if guest exists by email or phone
-      let existingGuest = await this.getGuestByEmail(input.email);
+      let existingGuest = await this.getGuestByEmail(input.email, clubId);
 
       if (!existingGuest) {
-        existingGuest = await this.getGuestByPhone(input.phone);
+        existingGuest = await this.getGuestByPhone(input.phone, clubId);
       }
 
       if (existingGuest) {
@@ -61,6 +61,7 @@ class GuestService {
 
       // Create new guest
       const guestData = {
+        clubId,
         name: input.name,
         email: input.email,
         phone: input.phone,
@@ -107,9 +108,11 @@ class GuestService {
   /**
    * Get guest by email
    */
-  async getGuestByEmail(email: string): Promise<Guest | null> {
+  async getGuestByEmail(email: string, clubId?: string): Promise<Guest | null> {
     try {
-      const q = query(collection(db, this.collectionName), where('email', '==', email));
+      const constraints = [where('email', '==', email)];
+      if (clubId) constraints.push(where('clubId', '==', clubId));
+      const q = query(collection(db, this.collectionName), ...constraints);
       const querySnapshot = await getDocs(q);
 
       if (querySnapshot.empty) {
@@ -126,9 +129,11 @@ class GuestService {
   /**
    * Get guest by phone
    */
-  async getGuestByPhone(phone: string): Promise<Guest | null> {
+  async getGuestByPhone(phone: string, clubId?: string): Promise<Guest | null> {
     try {
-      const q = query(collection(db, this.collectionName), where('phone', '==', phone));
+      const constraints = [where('phone', '==', phone)];
+      if (clubId) constraints.push(where('clubId', '==', clubId));
+      const q = query(collection(db, this.collectionName), ...constraints);
       const querySnapshot = await getDocs(q);
 
       if (querySnapshot.empty) {

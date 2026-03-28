@@ -43,10 +43,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  const registerAdmin = useCallback(async (email: string, password: string, name: string) => {
+  const registerAdmin = useCallback(async (email: string, password: string, name: string, clubName?: string) => {
     try {
       setError(null);
-      const admin = await authService.registerAdmin(email, password, name);
+      const admin = await authService.registerAdmin(email, password, name, 'admin', clubName);
       setCurrentAdmin(admin);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to register';

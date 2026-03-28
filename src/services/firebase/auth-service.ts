@@ -12,6 +12,8 @@ export interface Admin {
   id: string;
   email: string;
   name: string;
+  clubId: string;
+  clubName: string;
   role: 'super_admin' | 'admin';
   createdAt: Date;
   lastLogin?: Date;
@@ -26,18 +28,23 @@ class AuthService {
     email: string,
     password: string,
     name: string,
-    role: 'super_admin' | 'admin' = 'admin'
+    role: 'super_admin' | 'admin' = 'admin',
+    clubName = 'Default Club'
   ): Promise<Admin> {
     try {
       // Create Firebase user
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
+      const normalizedClubName = clubName.trim() || 'Default Club';
+      const clubId = this.toClubId(normalizedClubName);
 
       // Create admin document in Firestore
       const adminData: Admin = {
         id: user.uid,
         email,
         name,
+        clubId,
+        clubName: normalizedClubName,
         role,
         createdAt: new Date(),
         isActive: true,
@@ -70,9 +77,10 @@ class AuthService {
       }
 
       const adminData = adminDoc.data() as Admin;
+      const normalized = this.normalizeAdmin(adminData, user.uid);
 
       // Check if admin is active
-      if (!adminData.isActive) {
+      if (!normalized.isActive) {
         await firebaseSignOut(auth);
         throw new Error('Admin account is deactivated');
       }
@@ -80,11 +88,15 @@ class AuthService {
       // Update last login
       await setDoc(
         doc(db, 'admins', user.uid),
-        { lastLogin: Timestamp.now() },
+        {
+          lastLogin: Timestamp.now(),
+          clubId: normalized.clubId,
+          clubName: normalized.clubName,
+        },
         { merge: true }
       );
 
-      return adminData;
+      return normalized;
     } catch (error) {
       throw new Error(`Login failed: ${(error instanceof Error ? error.message : String(error))}`);
     }
@@ -104,7 +116,14 @@ class AuthService {
         try {
           const adminDoc = await getDoc(doc(db, 'admins', user.uid));
           if (adminDoc.exists()) {
-            resolve(adminDoc.data() as Admin);
+            const normalized = this.normalizeAdmin(adminDoc.data() as Admin, user.uid);
+            // Backfill club metadata for legacy admins
+            await setDoc(
+              doc(db, 'admins', user.uid),
+              { clubId: normalized.clubId, clubName: normalized.clubName },
+              { merge: true }
+            );
+            resolve(normalized);
           } else {
             resolve(null);
           }
@@ -134,6 +153,27 @@ class AuthService {
    */
   onAuthStateChange(callback: (user: User | null) => void): () => void {
     return onAuthStateChanged(auth, callback);
+  }
+
+  private toClubId(clubName: string): string {
+    return clubName
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '') || 'default-club';
+  }
+
+  private normalizeAdmin(admin: Admin, userId: string): Admin {
+    if (admin.clubId && admin.clubName) {
+      return admin;
+    }
+
+    const fallbackClubName = admin.clubName || `${admin.name || 'Admin'} Club`;
+    return {
+      ...admin,
+      clubId: admin.clubId || `club-${userId}`,
+      clubName: fallbackClubName,
+    };
   }
 }
 

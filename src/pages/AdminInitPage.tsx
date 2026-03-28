@@ -29,6 +29,7 @@ interface DBStats {
 export default function AdminInitPage() {
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
+  const [clubName, setClubName] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState<DBStats | null>(null);
@@ -58,7 +59,7 @@ export default function AdminInitPage() {
   const handleCreateAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!email || !name || !password) {
+    if (!email || !name || !clubName || !password) {
       toast.error('Please fill in all fields');
       return;
     }
@@ -73,11 +74,12 @@ export default function AdminInitPage() {
     try {
       // Use the proper authService to create admin user
       // This creates both Firebase Auth user AND Firestore document
-      await authService.registerAdmin(email, password, name, 'super_admin');
+      await authService.registerAdmin(email, password, name, 'super_admin', clubName);
 
       toast.success('Admin user created successfully!');
       setEmail('');
       setName('');
+      setClubName('');
       setPassword('');
       await loadStats();
       
@@ -198,6 +200,20 @@ export default function AdminInitPage() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="John Doe"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                />
+              </div>
+              <div>
+                <label htmlFor="admin-club" className="block text-sm font-medium text-gray-700 mb-1">
+                  Club Name
+                </label>
+                <input
+                  id="admin-club"
+                  type="text"
+                  value={clubName}
+                  onChange={(e) => setClubName(e.target.value)}
+                  placeholder="Rotaract Club of Kampala"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   required
                 />

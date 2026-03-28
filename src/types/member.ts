@@ -2,6 +2,8 @@
 
 export interface Member {
   id: string;
+  clubId?: string;
+  createdByAdminId?: string;
   name: string;
   email: string;
   phone: string;

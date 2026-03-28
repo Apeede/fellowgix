@@ -36,9 +36,9 @@ const EventsPage: React.FC = () => {
     try {
       let data: Event[] = [];
       if (filter === 'upcoming') {
-        data = await eventService.getUpcomingEvents(currentAdmin.id);
+        data = await eventService.getUpcomingEvents(currentAdmin.id, currentAdmin.clubId);
       } else {
-        data = await eventService.getEventsByAdmin(currentAdmin.id, filter === 'all');
+        data = await eventService.getEventsByAdmin(currentAdmin.id, filter === 'all', currentAdmin.clubId);
       }
       setEvents(data);
     } catch (error) {

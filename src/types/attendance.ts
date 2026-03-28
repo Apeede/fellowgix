@@ -3,6 +3,7 @@
 export interface AttendanceRecord {
   id: string;
   eventId: string;
+  clubId?: string;
   type: 'member' | 'guest';
   personId: string;
   personName: string;

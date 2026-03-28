@@ -2,6 +2,7 @@
 
 export interface Guest {
   id: string;
+  clubId?: string;
   name: string;
   email: string;
   phone: string;
