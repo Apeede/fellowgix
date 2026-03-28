@@ -11,6 +11,7 @@ import EventQRCodePage from '@pages/EventQRCodePage';
 import EventsPage from '@pages/EventsPage';
 import GuestCheckInPage from '@pages/GuestCheckInPage';
 import LoginPage from '@pages/LoginPage';
+import MembersPage from '@pages/MembersPage';
 import MemberCheckInPage from '@pages/MemberCheckInPage';
 import ScannerPage from '@pages/ScannerPage';
 import { Toaster } from 'react-hot-toast';
@@ -33,6 +34,15 @@ function App() {
             element={
               <ProtectedRoute>
                 <DashboardPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/members"
+            element={
+              <ProtectedRoute>
+                <MembersPage />
               </ProtectedRoute>
             }
           />

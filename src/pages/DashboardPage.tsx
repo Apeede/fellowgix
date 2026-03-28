@@ -1,7 +1,7 @@
 import { useAuth } from '@context/useAuth';
 import { eventService } from '@services/firebase/event-service';
 import { EventStats } from '@types/event';
-import { BarChart3, Calendar, LogOut, Plus, TrendingUp, Users } from 'lucide-react';
+import { BarChart3, Calendar, LogOut, Plus, TrendingUp, UserCheck, Users } from 'lucide-react';
 import React, { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
@@ -160,6 +160,26 @@ const DashboardPage: React.FC = () => {
             </button>
           </div>
 
+          {/* Members Card */}
+          <div
+            onClick={() => navigate('/members')}
+            className="card cursor-pointer hover:shadow-lg hover:border-primary-600 transition-all border-2 border-transparent"
+          >
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <h3 className="text-xl font-bold text-gray-900">Manage Members</h3>
+                <p className="text-gray-600 text-sm mt-1">
+                  Add, view, and manage Rotaract members
+                </p>
+              </div>
+              <UserCheck className="w-8 h-8 text-primary-600" />
+            </div>
+            <button type="button" className="btn-primary mt-4 flex items-center gap-2 w-full justify-center">
+              <Users className="w-4 h-4" />
+              View Members
+            </button>
+          </div>
+
           {/* Analytics Card */}
           <div className="card cursor-pointer border-2 border-transparent opacity-50 pointer-events-none">
             <div className="flex items-start justify-between mb-4">
@@ -181,6 +201,20 @@ const DashboardPage: React.FC = () => {
         <div className="mt-12 card">
           <h3 className="text-lg font-bold text-gray-900 mb-6">Quick Links</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <button
+              type="button"
+              onClick={() => navigate('/members')}
+              className="p-4 border-2 border-gray-200 rounded-lg hover:border-primary-600 hover:bg-primary-50 transition-all text-left"
+            >
+              <div className="flex items-center gap-3">
+                <UserCheck className="w-5 h-5 text-primary-600" />
+                <div>
+                  <p className="font-medium text-gray-900">Manage Members</p>
+                  <p className="text-sm text-gray-600">Add or view members</p>
+                </div>
+              </div>
+            </button>
+
             <button
               type="button"
               onClick={() => navigate('/events/create')}
