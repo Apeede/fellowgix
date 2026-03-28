@@ -5,9 +5,7 @@ import {
     doc,
     getDoc,
     getDocs,
-    orderBy,
     query,
-    QueryConstraint,
     setDoc,
     Timestamp,
     updateDoc,
@@ -67,28 +65,36 @@ class EventService {
    */
   async getEventsByAdmin(adminId: string, includeInactive = false, clubId?: string): Promise<Event[]> {
     try {
-      const constraints: QueryConstraint[] = [
-        clubId ? where('clubId', '==', clubId) : where('createdBy', '==', adminId),
+      // Fetch club-bound events plus legacy createdBy events, then merge/filter client-side.
+      const queries = [
+        clubId
+          ? query(collection(db, this.collectionName), where('clubId', '==', clubId))
+          : query(collection(db, this.collectionName), where('createdBy', '==', adminId)),
       ];
 
-      if (!includeInactive) {
-        constraints.push(where('isActive', '==', true));
+      if (clubId) {
+        queries.push(query(collection(db, this.collectionName), where('createdBy', '==', adminId)));
       }
 
-      constraints.push(orderBy('date', 'desc'));
+      const snapshots = await Promise.all(queries.map((q) => getDocs(q)));
+      const merged = new Map<string, Event>();
 
-      const q = query(collection(db, this.collectionName), ...constraints);
-      const querySnapshot = await getDocs(q);
-
-      return querySnapshot.docs.map((doc) => {
-        const data = doc.data();
-        return {
-          ...data,
-          id: doc.id,
-          createdAt: firestoreTimestampToDate(data.createdAt),
-          updatedAt: firestoreTimestampToDate(data.updatedAt),
-        } as Event;
+      snapshots.forEach((snapshot) => {
+        snapshot.docs.forEach((doc) => {
+          const data = doc.data();
+          const event = {
+            ...data,
+            id: doc.id,
+            createdAt: firestoreTimestampToDate(data.createdAt),
+            updatedAt: firestoreTimestampToDate(data.updatedAt),
+          } as Event;
+          merged.set(event.id, event);
+        });
       });
+
+      return Array.from(merged.values())
+        .filter((event) => (includeInactive ? true : event.isActive))
+        .sort((a, b) => (a.date < b.date ? 1 : -1));
     } catch (error) {
       throw new Error(`Failed to fetch events: ${(error instanceof Error ? error.message : String(error))}`);
     }
@@ -100,25 +106,10 @@ class EventService {
   async getUpcomingEvents(adminId: string, clubId?: string): Promise<Event[]> {
     try {
       const today = new Date().toISOString().split('T')[0];
-      const q = query(
-        collection(db, this.collectionName),
-        clubId ? where('clubId', '==', clubId) : where('createdBy', '==', adminId),
-        where('isActive', '==', true),
-        where('date', '>=', today),
-        orderBy('date', 'asc')
-      );
-
-      const querySnapshot = await getDocs(q);
-
-      return querySnapshot.docs.map((doc) => {
-        const data = doc.data();
-        return {
-          ...data,
-          id: doc.id,
-          createdAt: firestoreTimestampToDate(data.createdAt),
-          updatedAt: firestoreTimestampToDate(data.updatedAt),
-        } as Event;
-      });
+      const allEvents = await this.getEventsByAdmin(adminId, false, clubId);
+      return allEvents
+        .filter((event) => event.isActive && event.date >= today)
+        .sort((a, b) => (a.date > b.date ? 1 : -1));
     } catch (error) {
       throw new Error(`Failed to fetch upcoming events: ${(error instanceof Error ? error.message : String(error))}`);
     }
