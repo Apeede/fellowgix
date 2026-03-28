@@ -39,6 +39,33 @@ const DashboardPage: React.FC = () => {
     }
   };
 
+  const handleOpenAnalytics = async () => {
+    if (!currentAdmin) return;
+
+    try {
+      // Prefer upcoming events, but fall back to any available active event.
+      const upcomingEvents = await eventService.getUpcomingEvents(currentAdmin.id);
+      if (upcomingEvents.length > 0 && upcomingEvents[0].id) {
+        navigate(`/events/${upcomingEvents[0].id}/analytics`);
+        return;
+      }
+
+      const allEvents = await eventService.getEventsByAdmin(currentAdmin.id, true);
+      const activeEvent = allEvents.find((event) => event.isActive) || allEvents[0];
+
+      if (activeEvent?.id) {
+        navigate(`/events/${activeEvent.id}/analytics`);
+        return;
+      }
+
+      toast.error('No events found yet. Create an event first.');
+      navigate('/events');
+    } catch (error) {
+      toast.error('Failed to open analytics');
+      console.error(error);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Navigation Bar */}
@@ -142,7 +169,7 @@ const DashboardPage: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Event Management Card */}
           <div
-            onClick={() => navigate('/events')}
+            onClick={handleOpenAnalytics}
             className="card cursor-pointer hover:shadow-lg hover:border-primary-600 transition-all border-2 border-transparent"
           >
             <div className="flex items-start justify-between mb-4">
@@ -181,18 +208,22 @@ const DashboardPage: React.FC = () => {
           </div>
 
           {/* Analytics Card */}
-          <div className="card cursor-pointer border-2 border-transparent opacity-50 pointer-events-none">
+          <div
+            onClick={() => navigate('/events')}
+            className="card cursor-pointer hover:shadow-lg hover:border-primary-600 transition-all border-2 border-transparent"
+          >
             <div className="flex items-start justify-between mb-4">
               <div>
                 <h3 className="text-xl font-bold text-gray-900">Analytics</h3>
                 <p className="text-gray-600 text-sm mt-1">
-                  View attendance reports and insights
+                  Open events and view analytics per event
                 </p>
               </div>
-              <BarChart3 className="w-8 h-8 text-gray-400" />
+              <BarChart3 className="w-8 h-8 text-primary-600" />
             </div>
-            <button type="button" className="btn-secondary mt-4 flex items-center gap-2 w-full justify-center" disabled>
-              Coming Soon
+            <button type="button" className="btn-primary mt-4 flex items-center gap-2 w-full justify-center">
+              <BarChart3 className="w-4 h-4" />
+              View Analytics
             </button>
           </div>
         </div>
@@ -231,7 +262,7 @@ const DashboardPage: React.FC = () => {
 
             <button
               type="button"
-              onClick={() => navigate('/events')}
+              onClick={handleOpenAnalytics}
               className="p-4 border-2 border-gray-200 rounded-lg hover:border-primary-600 hover:bg-primary-50 transition-all text-left"
             >
               <div className="flex items-center gap-3">
@@ -243,12 +274,16 @@ const DashboardPage: React.FC = () => {
               </div>
             </button>
 
-            <button type="button" className="p-4 border-2 border-gray-200 rounded-lg opacity-50 cursor-not-allowed text-left" disabled>
+            <button
+              type="button"
+              onClick={() => navigate('/events')}
+              className="p-4 border-2 border-gray-200 rounded-lg hover:border-primary-600 hover:bg-primary-50 transition-all text-left"
+            >
               <div className="flex items-center gap-3">
-                <BarChart3 className="w-5 h-5 text-gray-400" />
+                <BarChart3 className="w-5 h-5 text-primary-600" />
                 <div>
                   <p className="font-medium text-gray-900">View Analytics</p>
-                  <p className="text-sm text-gray-600">Coming soon</p>
+                  <p className="text-sm text-gray-600">Select an event to view insights</p>
                 </div>
               </div>
             </button>

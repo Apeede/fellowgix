@@ -24,12 +24,6 @@ const EventAnalyticsPage: React.FC = () => {
   const [analytics, setAnalytics] = useState<AttendanceAnalytics | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    if (eventId) {
-      loadData();
-    }
-  }, [eventId, loadData]);
-
   const loadData = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -53,6 +47,12 @@ const EventAnalyticsPage: React.FC = () => {
       setIsLoading(false);
     }
   }, [eventId, navigate]);
+
+  useEffect(() => {
+    if (eventId) {
+      loadData();
+    }
+  }, [eventId, loadData]);
 
   const handleViewAttendees = () => {
     navigate(`/events/${eventId}/attendance`, { replace: false });
@@ -110,7 +110,7 @@ const EventAnalyticsPage: React.FC = () => {
             <div className="flex items-center gap-4">
               <button
                 type="button"
-                onClick={() => navigate(-1)}
+                onClick={() => navigate('/events')}
                 aria-label="Go back"
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
               >

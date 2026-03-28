@@ -3,6 +3,7 @@ import { eventService } from '@services/firebase/event-service';
 import { qrCodeGeneratorService } from '@services/qrcode/qrcode-generator';
 import { Event } from '@types/event';
 import {
+    ArrowLeft,
     BarChart3,
     Calendar,
     Download,
@@ -97,15 +98,34 @@ const EventsPage: React.FC = () => {
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex justify-between items-center">
-            <h1 className="text-3xl font-bold text-gray-900">Events</h1>
-            <button
-              type="button"
-              onClick={() => navigate('/events/create')}
-              className="btn-primary flex items-center gap-2"
-            >
-              <Plus className="w-5 h-5" />
-              Create Event
-            </button>
+            <div className="flex items-center gap-4">
+              <button
+                type="button"
+                onClick={() => navigate('/dashboard')}
+                aria-label="Back to dashboard"
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <ArrowLeft className="w-6 h-6 text-gray-700" />
+              </button>
+              <h1 className="text-3xl font-bold text-gray-900">Events</h1>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => navigate('/dashboard')}
+                className="btn-outline"
+              >
+                Dashboard
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/events/create')}
+                className="btn-primary flex items-center gap-2"
+              >
+                <Plus className="w-5 h-5" />
+                Create Event
+              </button>
+            </div>
           </div>
         </div>
       </div>
