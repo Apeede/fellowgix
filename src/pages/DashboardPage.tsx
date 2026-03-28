@@ -299,7 +299,7 @@ const DashboardPage: React.FC = () => {
 
             <button
               type="button"
-              onClick={handleOpenAnalytics}
+              onClick={() => navigate('/events')}
               className="p-4 border-2 border-gray-200 rounded-lg hover:border-primary-600 hover:bg-primary-50 transition-all text-left"
             >
               <div className="flex items-center gap-3">
@@ -313,7 +313,7 @@ const DashboardPage: React.FC = () => {
 
             <button
               type="button"
-              onClick={() => navigate('/events')}
+              onClick={handleOpenAnalytics}
               className="p-4 border-2 border-gray-200 rounded-lg hover:border-primary-600 hover:bg-primary-50 transition-all text-left"
             >
               <div className="flex items-center gap-3">

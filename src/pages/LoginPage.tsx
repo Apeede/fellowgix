@@ -1,4 +1,5 @@
 import { useAuth } from '@context/useAuth';
+import { authService } from '@services/firebase/auth-service';
 import { Loader, LogIn } from 'lucide-react';
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
@@ -8,6 +9,7 @@ const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
   const { loginAdmin, error, clearError } = useAuth();
   const navigate = useNavigate();
 
@@ -29,6 +31,23 @@ const LoginPage: React.FC = () => {
       toast.error(err instanceof Error ? err.message : 'Login failed');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handlePasswordReset = async () => {
+    if (!email.trim()) {
+      toast.error('Enter your email first, then click Forgot password');
+      return;
+    }
+
+    setIsResettingPassword(true);
+    try {
+      await authService.sendAdminPasswordReset(email.trim());
+      toast.success(`Password reset link sent to ${email.trim().toLowerCase()}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to send password reset link');
+    } finally {
+      setIsResettingPassword(false);
     }
   };
 
@@ -81,6 +100,16 @@ const LoginPage: React.FC = () => {
                 className="input-field"
                 disabled={isLoading}
               />
+              <div className="mt-2 text-right">
+                <button
+                  type="button"
+                  onClick={handlePasswordReset}
+                  disabled={isLoading || isResettingPassword}
+                  className="text-sm text-primary-700 hover:text-primary-800 font-medium disabled:opacity-60"
+                >
+                  {isResettingPassword ? 'Sending reset link...' : 'Forgot password?'}
+                </button>
+              </div>
             </div>
 
             <button

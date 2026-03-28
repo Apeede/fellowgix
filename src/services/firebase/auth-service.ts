@@ -8,7 +8,7 @@ import {
     User
 } from 'firebase/auth';
 import { deleteApp, initializeApp } from 'firebase/app';
-import { doc, getDoc, setDoc, Timestamp } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, limit, query, setDoc, Timestamp, where } from 'firebase/firestore';
 import { firebaseConfig } from '../../config/firebase-config';
 import { auth, db } from './firebase';
 
@@ -39,6 +39,7 @@ class AuthService {
     const role = input.role || 'club_admin';
     const normalizedClubName = input.clubName.trim();
     const clubId = this.toClubId(normalizedClubName);
+    await this.assertClubAdminCapacity(clubId);
 
     // Create auth user in an isolated Firebase app so the current super admin session is preserved.
     const secondaryApp = initializeApp(firebaseConfig, `secondary-${Date.now()}`);
@@ -94,11 +95,13 @@ class AuthService {
     clubName = 'Default Club'
   ): Promise<Admin> {
     try {
+      const normalizedClubName = clubName.trim() || 'Default Club';
+      const clubId = this.toClubId(normalizedClubName);
+      await this.assertClubAdminCapacity(clubId);
+
       // Create Firebase user
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
-      const normalizedClubName = clubName.trim() || 'Default Club';
-      const clubId = this.toClubId(normalizedClubName);
 
       // Create admin document in Firestore
       const adminData: Admin = {
@@ -229,6 +232,25 @@ class AuthService {
       .trim()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/(^-|-$)/g, '') || 'default-club';
+  }
+
+  private async assertClubAdminCapacity(clubId: string): Promise<void> {
+    const snapshot = await getDocs(
+      query(
+        collection(db, 'admins'),
+        where('clubId', '==', clubId),
+        limit(10)
+      )
+    );
+
+    const activeAdmins = snapshot.docs.filter((adminDoc) => {
+      const data = adminDoc.data() as Partial<Admin>;
+      return data.isActive !== false;
+    }).length;
+
+    if (activeAdmins >= 3) {
+      throw new Error('This club already has the maximum of 3 admins. Deactivate one before adding another.');
+    }
   }
 
   private normalizeAdmin(admin: Admin, userId: string): Admin {
