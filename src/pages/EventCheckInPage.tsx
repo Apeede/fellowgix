@@ -12,10 +12,6 @@ const EventCheckInPage: React.FC = () => {
   const [event, setEvent] = useState<Event | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    loadEvent();
-  }, [eventId, loadEvent]);
-
   const loadEvent = useCallback(async () => {
     if (!eventId) {
       toast.error('Event not found');
@@ -39,6 +35,10 @@ const EventCheckInPage: React.FC = () => {
       setIsLoading(false);
     }
   }, [eventId, navigate]);
+
+  useEffect(() => {
+    loadEvent();
+  }, [eventId, loadEvent]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100">
