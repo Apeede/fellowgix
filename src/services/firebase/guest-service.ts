@@ -190,6 +190,9 @@ class GuestService {
       const doc = querySnapshot.docs[0];
       return this.convertGuestDoc(doc.data(), doc.id);
     } catch (error) {
+      if (this.isPermissionDenied(error)) {
+        return null;
+      }
       throw new Error(`Failed to get guest by email: ${(error instanceof Error ? error.message : String(error))}`);
     }
   }
@@ -211,6 +214,9 @@ class GuestService {
       const doc = querySnapshot.docs[0];
       return this.convertGuestDoc(doc.data(), doc.id);
     } catch (error) {
+      if (this.isPermissionDenied(error)) {
+        return null;
+      }
       throw new Error(`Failed to get guest by phone: ${(error instanceof Error ? error.message : String(error))}`);
     }
   }

@@ -161,52 +161,6 @@ class MemberService {
     try {
       const normalizedTerm = this.normalizeSearchText(searchTerm);
       const normalizedPhoneTerm = normalizePhone(searchTerm);
-      const results: MemberSearchResult[] = [];
-
-      const emailQuery = query(
-        collection(db, this.publicDirectoryCollectionName),
-        where('clubId', '==', clubId),
-        where('emailSearch', '>=', normalizedTerm),
-        where('emailSearch', '<=', normalizedTerm + '\uf8ff')
-      );
-      const emailSnapshot = await getDocs(emailQuery);
-      results.push(...emailSnapshot.docs.map((item) => this.convertSearchResult(item.data() as Record<string, unknown>, item.id)));
-
-      const nameQuery = query(
-        collection(db, this.publicDirectoryCollectionName),
-        where('clubId', '==', clubId),
-        where('nameSearch', '>=', normalizedTerm),
-        where('nameSearch', '<=', normalizedTerm + '\uf8ff')
-      );
-      const nameSnapshot = await getDocs(nameQuery);
-      results.push(...nameSnapshot.docs.map((item) => this.convertSearchResult(item.data() as Record<string, unknown>, item.id)));
-
-      const memberIdQuery = query(
-        collection(db, this.publicDirectoryCollectionName),
-        where('clubId', '==', clubId),
-        where('memberIdSearch', '>=', normalizedTerm),
-        where('memberIdSearch', '<=', normalizedTerm + '\uf8ff')
-      );
-      const memberIdSnapshot = await getDocs(memberIdQuery);
-      results.push(...memberIdSnapshot.docs.map((item) => this.convertSearchResult(item.data() as Record<string, unknown>, item.id)));
-
-      if (normalizedPhoneTerm) {
-        const phoneQuery = query(
-          collection(db, this.publicDirectoryCollectionName),
-          where('clubId', '==', clubId),
-          where('phoneSearch', '>=', normalizedPhoneTerm),
-          where('phoneSearch', '<=', normalizedPhoneTerm + '\uf8ff')
-        );
-        const phoneSnapshot = await getDocs(phoneQuery);
-        results.push(...phoneSnapshot.docs.map((item) => this.convertSearchResult(item.data() as Record<string, unknown>, item.id)));
-      }
-
-      const dedupedDirectoryResults = Array.from(new Map(results.map((item) => [item.id, item])).values());
-      if (dedupedDirectoryResults.length > 0) {
-        return dedupedDirectoryResults;
-      }
-
-      // Fallback for clubs whose public directory has not been backfilled yet.
       const membersSnapshot = await getDocs(
         query(
           collection(db, this.collectionName),
