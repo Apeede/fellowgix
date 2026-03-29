@@ -105,12 +105,17 @@ function App() {
           />
 
           <Route
-            path="/events/:eventId/qrcode"
+            path="/events/:eventId/manage-qrcode"
             element={
               <ProtectedRoute allowedRoles={['super_admin', 'club_admin', 'event_manager', 'viewer']}>
                 <EventQRCodePage />
               </ProtectedRoute>
             }
+          />
+
+          <Route
+            path="/events/:eventId/qrcode"
+            element={<Navigate to="../checkin" replace />}
           />
 
           {/* Check-In Routes */}

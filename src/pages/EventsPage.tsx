@@ -111,7 +111,7 @@ const EventsPage: React.FC = () => {
   };
 
   const handleViewQR = (event: Event) => {
-    navigate(`/events/${event.id}/qrcode`, { state: { event } });
+    navigate(`/events/${event.id}/manage-qrcode`, { state: { event } });
   };
 
   const visibleEvents = useMemo(() => {
