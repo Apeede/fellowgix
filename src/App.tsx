@@ -14,7 +14,7 @@ import MemberCheckInPage from '@pages/MemberCheckInPage';
 import ScannerPage from '@pages/ScannerPage';
 import React, { Suspense } from 'react';
 import { Toaster } from 'react-hot-toast';
-import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
+import { Navigate, Route, BrowserRouter as Router, Routes, useParams } from 'react-router-dom';
 import './index.css';
 
 const SuperAdminPage = React.lazy(() => import('@pages/SuperAdminPage'));
@@ -25,6 +25,11 @@ const SystemAnalyticsPage = React.lazy(() => import('@pages/SystemAnalyticsPage'
 const SettingsPage = React.lazy(() => import('@pages/SettingsPage'));
 const HelpCenterPage = React.lazy(() => import('@pages/HelpCenterPage'));
 const EditEventPage = React.lazy(() => import('@pages/EditEventPage'));
+
+const PublicQRCodeRedirect: React.FC = () => {
+  const { eventId } = useParams<{ eventId: string }>();
+  return <Navigate to={eventId ? `/events/${eventId}/checkin` : '/scan'} replace />;
+};
 
 function App() {
   const withSuspense = (node: React.ReactNode) => (
@@ -115,7 +120,7 @@ function App() {
 
           <Route
             path="/events/:eventId/qrcode"
-            element={<Navigate to="../checkin" replace />}
+            element={<PublicQRCodeRedirect />}
           />
 
           {/* Check-In Routes */}

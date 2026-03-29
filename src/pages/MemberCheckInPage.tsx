@@ -1,15 +1,17 @@
 import { attendanceService } from '@services/firebase/attendance-service';
 import { eventService } from '@services/firebase/event-service';
 import { memberService } from '@services/firebase/member-service';
+import { Event } from '@types/event';
 import { MemberSearchResult } from '@types/member';
 import { AlertCircle, ArrowLeft, Check, Loader, Search } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 
 const MemberCheckInPage: React.FC = () => {
   const { eventId } = useParams<{ eventId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState<MemberSearchResult[]>([]);
@@ -21,35 +23,62 @@ const MemberCheckInPage: React.FC = () => {
   const [eventClubId, setEventClubId] = useState<string>('');
   const [eventClubName, setEventClubName] = useState<string>('');
   const [isEventLoading, setIsEventLoading] = useState(true);
+  const [memberLoadError, setMemberLoadError] = useState<string | null>(null);
+
+  const loadEligibleMembers = async (clubId: string, clubName: string) => {
+    if (!clubId && !clubName) {
+      setAvailableMembers([]);
+      setMemberLoadError(null);
+      return;
+    }
+
+    try {
+      const members = await memberService.getEligibleCheckInMembers(clubId, clubName);
+      setAvailableMembers(members);
+      setMemberLoadError(null);
+    } catch (error) {
+      setAvailableMembers([]);
+      setMemberLoadError('Unable to load club members right now. You can retry below.');
+      console.error(error);
+    }
+  };
 
   useEffect(() => {
     const loadEventClub = async () => {
       if (!eventId) return;
       setIsEventLoading(true);
+      setMemberLoadError(null);
       try {
-        const event = await eventService.getEventById(eventId);
+        const stateEvent = (location.state as { event?: Event } | null)?.event ?? null;
+        const event = stateEvent && stateEvent.id === eventId
+          ? stateEvent
+          : await eventService.getEventById(eventId);
+        if (!event) {
+          setEventClubId('');
+          setEventClubName('');
+          setAvailableMembers([]);
+          setMemberLoadError('Event not found.');
+          return;
+        }
+
         const clubId = event?.clubId || '';
         const clubName = event?.clubName || '';
         setEventClubId(clubId);
         setEventClubName(clubName);
 
-        if (clubId || clubName) {
-          const members = await memberService.getEligibleCheckInMembers(clubId, clubName);
-          setAvailableMembers(members);
-        } else {
-          setAvailableMembers([]);
-        }
+        await loadEligibleMembers(clubId, clubName);
       } catch (error) {
         setEventClubId('');
         setEventClubName('');
         setAvailableMembers([]);
-        toast.error('Failed to load club members');
+        setMemberLoadError('Failed to load event details.');
+        toast.error('Failed to load event details');
       } finally {
         setIsEventLoading(false);
       }
     };
     loadEventClub();
-  }, [eventId]);
+  }, [eventId, location.state]);
 
   useEffect(() => {
     const term = searchTerm.trim();
@@ -61,19 +90,35 @@ const MemberCheckInPage: React.FC = () => {
     }
 
     let isActive = true;
-    const timer = window.setTimeout(() => {
+    const timer = window.setTimeout(async () => {
       setIsSearching(true);
-      const normalizedTerm = term.toLowerCase();
-      const filtered = availableMembers
-        .filter((member) => {
-          const haystack = `${member.name} ${member.email} ${member.memberId || ''}`.toLowerCase();
-          return haystack.includes(normalizedTerm);
-        })
-        .slice(0, 25);
+      try {
+        const normalizedTerm = term.toLowerCase();
+        let filtered = availableMembers
+          .filter((member) => {
+            const haystack = `${member.name} ${member.email} ${member.memberId || ''}`.toLowerCase();
+            return haystack.includes(normalizedTerm);
+          })
+          .slice(0, 25);
 
-      if (isActive) {
-        setSearchResults(filtered);
-        setIsSearching(false);
+        if (filtered.length === 0 && availableMembers.length === 0) {
+          filtered = await memberService.searchMembers(term, eventClubId, eventClubName);
+        }
+
+        if (isActive) {
+          setSearchResults(filtered);
+        }
+      } catch (error) {
+        if (isActive) {
+          setSearchResults([]);
+          setMemberLoadError('Search is temporarily unavailable. Please retry.');
+          toast.error('Failed to search members');
+          console.error(error);
+        }
+      } finally {
+        if (isActive) {
+          setIsSearching(false);
+        }
       }
     }, 150);
 
@@ -268,6 +313,19 @@ const MemberCheckInPage: React.FC = () => {
                 <AlertCircle className="w-10 h-10 text-red-500 mx-auto mb-2" />
                 <p className="text-gray-700">This event is missing club access details.</p>
                 <p className="text-sm text-gray-500">Ask an admin to reopen the QR code from Event Manager.</p>
+              </div>
+            )}
+
+            {!isEventLoading && (eventClubId || eventClubName) && memberLoadError && (
+              <div className="mb-6 rounded-lg border border-yellow-200 bg-yellow-50 p-4">
+                <p className="text-sm text-yellow-800">{memberLoadError}</p>
+                <button
+                  type="button"
+                  onClick={() => loadEligibleMembers(eventClubId, eventClubName)}
+                  className="mt-3 btn-secondary"
+                >
+                  Retry Loading Members
+                </button>
               </div>
             )}
 

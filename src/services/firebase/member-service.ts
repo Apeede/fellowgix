@@ -67,13 +67,13 @@ class MemberService {
   /**
    * Convert Firestore member document to Member type
    */
-  private convertMemberDoc(doc: any, id: string): Member {
+  private convertMemberDoc(docData: Record<string, unknown>, id: string): Member {
     return {
-      ...doc,
+      ...docData,
       id,
-      joinDate: firestoreTimestampToDate(doc.joinDate),
-      createdAt: firestoreTimestampToDate(doc.createdAt),
-      updatedAt: firestoreTimestampToDate(doc.updatedAt),
+      joinDate: firestoreTimestampToDate(docData.joinDate),
+      createdAt: firestoreTimestampToDate(docData.createdAt),
+      updatedAt: firestoreTimestampToDate(docData.updatedAt),
     } as Member;
   }
 
@@ -149,6 +149,18 @@ class MemberService {
 
     const haystack = `${member.name} ${member.email} ${member.phone} ${member.memberId || ''}`.toLowerCase();
     return haystack.includes(normalizedTerm) || (normalizedPhoneTerm ? member.phone.includes(normalizedPhoneTerm) : false);
+  }
+
+  private memberIsEligibleForClub(
+    raw: Record<string, unknown>,
+    clubId: string,
+    normalizedClubName?: string
+  ): boolean {
+    if (raw.isActive === false) {
+      return false;
+    }
+
+    return this.matchesClubScope(raw, clubId, normalizedClubName);
   }
 
   /**
@@ -260,12 +272,9 @@ class MemberService {
             raw: item.data() as Record<string, unknown>,
             member: this.convertSearchResult(item.data() as Record<string, unknown>, item.id),
           }))
-          .filter(({ raw, member }) =>
-            this.memberMatchesSearch(
-              member,
+          .filter(({ raw }) =>
+            this.memberIsEligibleForClub(
               raw,
-              normalizedTerm,
-              normalizedPhoneTerm,
               clubId,
               normalizedClubName || undefined
             )
@@ -282,12 +291,9 @@ class MemberService {
             raw: item.data() as Record<string, unknown>,
             member: this.convertMemberToSearchResult(item.data() as Record<string, unknown>, item.id),
           }))
-          .filter(({ raw, member }) =>
-            this.memberMatchesSearch(
-              member,
+          .filter(({ raw }) =>
+            this.memberIsEligibleForClub(
               raw,
-              normalizedTerm,
-              normalizedPhoneTerm,
               clubId,
               normalizedClubName || undefined
             )

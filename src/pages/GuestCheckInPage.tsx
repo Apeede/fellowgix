@@ -1,10 +1,11 @@
 import { attendanceService } from '@services/firebase/attendance-service';
 import { eventService } from '@services/firebase/event-service';
 import { guestService } from '@services/firebase/guest-service';
+import { Event } from '@types/event';
 import { ArrowLeft, Check, Loader } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 
 interface CheckInResult {
   success: boolean;
@@ -17,6 +18,7 @@ interface CheckInResult {
 const GuestCheckInPage: React.FC = () => {
   const { eventId } = useParams<{ eventId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [formData, setFormData] = useState({
     name: '',
@@ -40,7 +42,10 @@ const GuestCheckInPage: React.FC = () => {
     const loadEventClub = async () => {
       if (!eventId) return;
       try {
-        const event = await eventService.getEventById(eventId);
+        const stateEvent = (location.state as { event?: Event } | null)?.event ?? null;
+        const event = stateEvent && stateEvent.id === eventId
+          ? stateEvent
+          : await eventService.getEventById(eventId);
         setEventClub({
           clubId: event?.clubId || '',
           clubName: event?.clubName || '',
@@ -57,7 +62,7 @@ const GuestCheckInPage: React.FC = () => {
       }
     };
     loadEventClub();
-  }, [eventId]);
+  }, [eventId, location.state]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>

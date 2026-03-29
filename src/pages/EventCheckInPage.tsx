@@ -98,7 +98,7 @@ const EventCheckInPage: React.FC = () => {
                 {/* Member Button */}
                 <button
                   type="button"
-                  onClick={() => navigate(`/events/${eventId}/checkin/member`)}
+                  onClick={() => navigate(`/events/${eventId}/checkin/member`, { state: { event } })}
                   className="card hover:shadow-2xl hover:border-primary-600 transition-all transform hover:-translate-y-1 cursor-pointer border-2 border-transparent group"
                 >
                   <div className="flex flex-col items-center justify-center py-8">
@@ -115,7 +115,7 @@ const EventCheckInPage: React.FC = () => {
                 {/* Guest Button */}
                 <button
                   type="button"
-                  onClick={() => navigate(`/events/${eventId}/checkin/guest`)}
+                  onClick={() => navigate(`/events/${eventId}/checkin/guest`, { state: { event } })}
                   className="card hover:shadow-2xl hover:border-primary-600 transition-all transform hover:-translate-y-1 cursor-pointer border-2 border-transparent group"
                 >
                   <div className="flex flex-col items-center justify-center py-8">
