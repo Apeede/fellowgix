@@ -19,9 +19,31 @@ import { firestoreTimestampToDate } from './firestore-utils';
 class MemberService {
   private collectionName = 'members';
   private publicDirectoryCollectionName = 'memberPublicDirectory';
+  private legacyClubAliases: Record<string, string> = {
+    tankhill: 'rotaract-tankhill-city',
+  };
 
   private normalizeSearchText(value: string): string {
     return value.trim().toLowerCase();
+  }
+
+  private resolveClubScopeKey(clubId: string, clubName?: string): string {
+    const normalizedClubId = this.normalizeSearchText(clubId);
+    if (normalizedClubId && this.legacyClubAliases[normalizedClubId]) {
+      return this.legacyClubAliases[normalizedClubId];
+    }
+    if (normalizedClubId) {
+      return normalizedClubId;
+    }
+
+    const normalizedClubName = this.normalizeSearchText(clubName || '');
+    if (!normalizedClubName) {
+      return '';
+    }
+    if (normalizedClubName.includes('tankhill')) {
+      return 'rotaract-tankhill-city';
+    }
+    return normalizedClubName;
   }
 
   private matchesClubScope(
@@ -29,17 +51,17 @@ class MemberService {
     clubId: string,
     normalizedClubName?: string
   ): boolean {
-    const rawClubId = String(raw.clubId || '').trim();
-    if (clubId && rawClubId === clubId) {
-      return true;
-    }
+    const targetScopeKey = this.resolveClubScopeKey(clubId, normalizedClubName);
+    const rawScopeKey = this.resolveClubScopeKey(
+      String(raw.clubId || ''),
+      String(raw.club || raw.clubName || '')
+    );
 
-    if (!normalizedClubName) {
+    if (!targetScopeKey || !rawScopeKey) {
       return false;
     }
 
-    const rawClubName = this.normalizeSearchText(String(raw.club || raw.clubName || ''));
-    return rawClubName === normalizedClubName;
+    return rawScopeKey === targetScopeKey;
   }
 
   /**

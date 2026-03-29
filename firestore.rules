@@ -41,6 +41,13 @@ service cloud.firestore {
       return isAdmin() && clubId == adminData().clubId;
     }
 
+    function canonicalClubId(clubId, clubName) {
+      return clubId == 'tankhill' ||
+        clubName in ['Tankhill', 'tankhill', 'Tankhill City', 'tankhill city']
+        ? 'rotaract-tankhill-city'
+        : clubId;
+    }
+
     function canManageClub(clubId) {
       return isSuperAdmin() || sameClub(clubId);
     }
@@ -81,7 +88,13 @@ service cloud.firestore {
     function isValidPublicMemberAttendance() {
       return request.resource.data.type == 'member'
         && exists(/databases/$(database)/documents/members/$(request.resource.data.personId))
-        && get(/databases/$(database)/documents/members/$(request.resource.data.personId)).data.clubId == request.resource.data.clubId
+        && canonicalClubId(
+          get(/databases/$(database)/documents/members/$(request.resource.data.personId)).data.clubId,
+          get(/databases/$(database)/documents/members/$(request.resource.data.personId)).data.clubName
+        ) == canonicalClubId(
+          request.resource.data.clubId,
+          get(/databases/$(database)/documents/events/$(request.resource.data.eventId)).data.clubName
+        )
         && get(/databases/$(database)/documents/members/$(request.resource.data.personId)).data.isActive == true
         && get(/databases/$(database)/documents/members/$(request.resource.data.personId)).data.name == request.resource.data.personName
         && get(/databases/$(database)/documents/members/$(request.resource.data.personId)).data.email == request.resource.data.personEmail
@@ -115,7 +128,13 @@ service cloud.firestore {
         && request.resource.data.eCardGenerated == false
         && request.resource.data.eCardUrl == ''
         && exists(/databases/$(database)/documents/events/$(request.resource.data.eventId))
-        && get(/databases/$(database)/documents/events/$(request.resource.data.eventId)).data.clubId == request.resource.data.clubId
+        && canonicalClubId(
+          get(/databases/$(database)/documents/events/$(request.resource.data.eventId)).data.clubId,
+          get(/databases/$(database)/documents/events/$(request.resource.data.eventId)).data.clubName
+        ) == canonicalClubId(
+          request.resource.data.clubId,
+          get(/databases/$(database)/documents/events/$(request.resource.data.eventId)).data.clubName
+        )
         && get(/databases/$(database)/documents/events/$(request.resource.data.eventId)).data.isActive == true
         && (
           isValidPublicMemberAttendance() ||
