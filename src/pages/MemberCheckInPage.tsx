@@ -13,11 +13,13 @@ const MemberCheckInPage: React.FC = () => {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState<MemberSearchResult[]>([]);
+  const [availableMembers, setAvailableMembers] = useState<MemberSearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [selectedMember, setSelectedMember] = useState<MemberSearchResult | null>(null);
   const [isCheckingIn, setIsCheckingIn] = useState(false);
   const [checkInResult, setCheckInResult] = useState<{ success: boolean; isDuplicate: boolean; message: string } | null>(null);
   const [eventClubId, setEventClubId] = useState<string>('');
+  const [eventClubName, setEventClubName] = useState<string>('');
   const [isEventLoading, setIsEventLoading] = useState(true);
 
   useEffect(() => {
@@ -26,9 +28,22 @@ const MemberCheckInPage: React.FC = () => {
       setIsEventLoading(true);
       try {
         const event = await eventService.getEventById(eventId);
-        setEventClubId(event?.clubId || '');
+        const clubId = event?.clubId || '';
+        const clubName = event?.clubName || '';
+        setEventClubId(clubId);
+        setEventClubName(clubName);
+
+        if (clubId || clubName) {
+          const members = await memberService.getEligibleCheckInMembers(clubId, clubName);
+          setAvailableMembers(members);
+        } else {
+          setAvailableMembers([]);
+        }
       } catch (error) {
         setEventClubId('');
+        setEventClubName('');
+        setAvailableMembers([]);
+        toast.error('Failed to load club members');
       } finally {
         setIsEventLoading(false);
       }
@@ -39,37 +54,34 @@ const MemberCheckInPage: React.FC = () => {
   useEffect(() => {
     const term = searchTerm.trim();
 
-    if (term.length < 2 || !eventClubId) {
+    if (term.length < 2 || (!eventClubId && !eventClubName)) {
       setSearchResults([]);
       setIsSearching(false);
       return;
     }
 
     let isActive = true;
-    const timer = window.setTimeout(async () => {
+    const timer = window.setTimeout(() => {
       setIsSearching(true);
-      try {
-        const results = await memberService.searchMembers(term, eventClubId);
-        if (isActive) {
-          setSearchResults(results);
-        }
-      } catch (error) {
-        if (isActive) {
-          toast.error('Failed to search members');
-          console.error(error);
-        }
-      } finally {
-        if (isActive) {
-          setIsSearching(false);
-        }
+      const normalizedTerm = term.toLowerCase();
+      const filtered = availableMembers
+        .filter((member) => {
+          const haystack = `${member.name} ${member.email} ${member.memberId || ''}`.toLowerCase();
+          return haystack.includes(normalizedTerm);
+        })
+        .slice(0, 25);
+
+      if (isActive) {
+        setSearchResults(filtered);
+        setIsSearching(false);
       }
-    }, 250);
+    }, 150);
 
     return () => {
       isActive = false;
       window.clearTimeout(timer);
     };
-  }, [eventClubId, searchTerm]);
+  }, [availableMembers, eventClubId, eventClubName, searchTerm]);
 
   const handleSelectMember = (member: MemberSearchResult) => {
     setSelectedMember(member);
@@ -223,7 +235,7 @@ const MemberCheckInPage: React.FC = () => {
           <div className="card">
             <div className="mb-8">
               <h2 className="text-2xl font-bold text-gray-900 mb-2">Find Your Name</h2>
-              <p className="text-gray-600">Search for your name or email to check in</p>
+              <p className="text-gray-600">Search by your name, email, or member ID to check in</p>
             </div>
 
             {/* Search Input */}
@@ -236,10 +248,10 @@ const MemberCheckInPage: React.FC = () => {
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search by name or email..."
+                  placeholder="Search by name, email, or member ID..."
                   className="input-field pl-10"
                   autoFocus
-                  disabled={isEventLoading || !eventClubId}
+                  disabled={isEventLoading || (!eventClubId && !eventClubName)}
                 />
               </div>
             </div>
@@ -251,7 +263,7 @@ const MemberCheckInPage: React.FC = () => {
               </div>
             )}
 
-            {!isEventLoading && !eventClubId && (
+            {!isEventLoading && !eventClubId && !eventClubName && (
               <div className="text-center py-6">
                 <AlertCircle className="w-10 h-10 text-red-500 mx-auto mb-2" />
                 <p className="text-gray-700">This event is missing club access details.</p>
@@ -260,7 +272,7 @@ const MemberCheckInPage: React.FC = () => {
             )}
 
             {/* Loading State */}
-            {isSearching && eventClubId && (
+            {isSearching && (eventClubId || eventClubName) && (
               <div className="text-center py-8">
                 <Loader className="w-8 h-8 text-primary-600 animate-spin mx-auto mb-2" />
                 <p className="text-gray-600">Searching...</p>
@@ -279,6 +291,9 @@ const MemberCheckInPage: React.FC = () => {
                   >
                     <p className="font-semibold text-gray-900">{member.name}</p>
                     <p className="text-sm text-gray-500">{member.email}</p>
+                    {member.memberId && (
+                      <p className="text-sm text-gray-500 mt-1">Member ID: {member.memberId}</p>
+                    )}
                     {member.club && (
                       <p className="text-sm text-gray-500 mt-1">Club: {member.club}</p>
                     )}
@@ -306,9 +321,9 @@ const MemberCheckInPage: React.FC = () => {
             )}
 
             {/* Help Text */}
-            {searchTerm.length < 2 && searchResults.length === 0 && !isEventLoading && eventClubId && (
+            {searchTerm.length < 2 && searchResults.length === 0 && !isEventLoading && (eventClubId || eventClubName) && (
               <div className="text-center py-8 text-gray-500">
-                <p>Start typing your name or email to search</p>
+                <p>Start typing your name, email, or member ID to search</p>
               </div>
             )}
           </div>

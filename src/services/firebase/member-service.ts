@@ -24,6 +24,24 @@ class MemberService {
     return value.trim().toLowerCase();
   }
 
+  private matchesClubScope(
+    raw: Record<string, unknown>,
+    clubId: string,
+    normalizedClubName?: string
+  ): boolean {
+    const rawClubId = String(raw.clubId || '').trim();
+    if (clubId && rawClubId === clubId) {
+      return true;
+    }
+
+    if (!normalizedClubName) {
+      return false;
+    }
+
+    const rawClubName = this.normalizeSearchText(String(raw.club || raw.clubName || ''));
+    return rawClubName === normalizedClubName;
+  }
+
   /**
    * Convert Firestore member document to Member type
    */
@@ -89,6 +107,26 @@ class MemberService {
       memberId: String(docData.memberId || '').trim() || undefined,
       club: String(docData.club || docData.clubName || '').trim() || undefined,
     };
+  }
+
+  private memberMatchesSearch(
+    member: MemberSearchResult,
+    raw: Record<string, unknown>,
+    normalizedTerm: string,
+    normalizedPhoneTerm: string,
+    clubId: string,
+    normalizedClubName?: string
+  ): boolean {
+    if (raw.isActive === false) {
+      return false;
+    }
+
+    if (!this.matchesClubScope(raw, clubId, normalizedClubName)) {
+      return false;
+    }
+
+    const haystack = `${member.name} ${member.email} ${member.phone} ${member.memberId || ''}`.toLowerCase();
+    return haystack.includes(normalizedTerm) || (normalizedPhoneTerm ? member.phone.includes(normalizedPhoneTerm) : false);
   }
 
   /**
@@ -157,33 +195,100 @@ class MemberService {
   /**
    * Search members by name or email
    */
-  async searchMembers(searchTerm: string, clubId: string): Promise<MemberSearchResult[]> {
+  async searchMembers(searchTerm: string, clubId: string, clubName?: string): Promise<MemberSearchResult[]> {
     try {
       const normalizedTerm = this.normalizeSearchText(searchTerm);
       const normalizedPhoneTerm = normalizePhone(searchTerm);
-      const membersSnapshot = await getDocs(
-        query(
-          collection(db, this.collectionName),
-          where('clubId', '==', clubId)
-        )
-      );
+      const eligibleMembers = await this.getEligibleCheckInMembers(clubId, clubName);
 
-      return membersSnapshot.docs
-        .map((item) => ({
-          raw: item.data() as Record<string, unknown>,
-          member: this.convertMemberToSearchResult(item.data() as Record<string, unknown>, item.id),
-        }))
-        .filter(({ raw, member }) => {
-          if (raw.isActive === false) {
-            return false;
-          }
+      return eligibleMembers
+        .filter((member) => {
           const haystack = `${member.name} ${member.email} ${member.phone} ${member.memberId || ''}`.toLowerCase();
           return haystack.includes(normalizedTerm) || (normalizedPhoneTerm ? member.phone.includes(normalizedPhoneTerm) : false);
         })
-        .map(({ member }) => member)
         .slice(0, 25);
     } catch (error) {
       throw new Error(`Failed to search members: ${(error instanceof Error ? error.message : String(error))}`);
+    }
+  }
+
+  async getEligibleCheckInMembers(clubId: string, clubName?: string): Promise<MemberSearchResult[]> {
+    try {
+      const normalizedClubName = this.normalizeSearchText(clubName || '');
+      const [directoryResult, membersResult] = await Promise.allSettled([
+        getDocs(
+          query(
+            collection(db, this.publicDirectoryCollectionName),
+            where('isActive', '==', true)
+          )
+        ),
+        getDocs(
+          query(
+            collection(db, this.collectionName),
+            where('isActive', '==', true)
+          )
+        ),
+      ]);
+
+      const merged = new Map<string, MemberSearchResult>();
+
+      if (directoryResult.status === 'fulfilled') {
+        directoryResult.value.docs
+          .map((item) => ({
+            raw: item.data() as Record<string, unknown>,
+            member: this.convertSearchResult(item.data() as Record<string, unknown>, item.id),
+          }))
+          .filter(({ raw, member }) =>
+            this.memberMatchesSearch(
+              member,
+              raw,
+              normalizedTerm,
+              normalizedPhoneTerm,
+              clubId,
+              normalizedClubName || undefined
+            )
+          )
+          .forEach(({ member }) => {
+            const key = `${member.id}|${member.email.toLowerCase()}|${(member.memberId || '').toLowerCase()}`;
+            merged.set(key, member);
+          });
+      }
+
+      if (membersResult.status === 'fulfilled') {
+        membersResult.value.docs
+          .map((item) => ({
+            raw: item.data() as Record<string, unknown>,
+            member: this.convertMemberToSearchResult(item.data() as Record<string, unknown>, item.id),
+          }))
+          .filter(({ raw, member }) =>
+            this.memberMatchesSearch(
+              member,
+              raw,
+              normalizedTerm,
+              normalizedPhoneTerm,
+              clubId,
+              normalizedClubName || undefined
+            )
+          )
+          .forEach(({ member }) => {
+            const key = `${member.id}|${member.email.toLowerCase()}|${(member.memberId || '').toLowerCase()}`;
+            merged.set(key, member);
+          });
+      }
+
+      if (merged.size > 0) {
+        return Array.from(merged.values()).slice(0, 25);
+      }
+
+      if (directoryResult.status === 'rejected' && membersResult.status === 'rejected') {
+        throw new Error(
+          `Directory search failed: ${directoryResult.reason instanceof Error ? directoryResult.reason.message : String(directoryResult.reason)}; Members search failed: ${membersResult.reason instanceof Error ? membersResult.reason.message : String(membersResult.reason)}`
+        );
+      }
+
+      return [];
+    } catch (error) {
+      throw new Error(`Failed to load eligible members: ${(error instanceof Error ? error.message : String(error))}`);
     }
   }
 

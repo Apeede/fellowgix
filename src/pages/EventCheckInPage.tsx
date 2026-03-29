@@ -91,7 +91,7 @@ const EventCheckInPage: React.FC = () => {
             {/* Selection Section */}
             <div>
               <p className="text-center text-gray-600 mb-6 text-lg font-medium">
-                Are you a member or a guest?
+                Are you a Rotaract club member or a guest?
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -107,7 +107,7 @@ const EventCheckInPage: React.FC = () => {
                     </div>
                     <h3 className="text-2xl font-bold text-gray-900 mb-2">Rotaract Member</h3>
                     <p className="text-gray-600 text-center">
-                      I'm a verified member of Rotaract
+                      I'm a club member. I’ll search using my name, email, or member ID
                     </p>
                   </div>
                 </button>
@@ -124,7 +124,7 @@ const EventCheckInPage: React.FC = () => {
                     </div>
                     <h3 className="text-2xl font-bold text-gray-900 mb-2">Guest</h3>
                     <p className="text-gray-600 text-center">
-                      I'm joining as a guest
+                      I’m not a club member and I’m joining as a guest
                     </p>
                   </div>
                 </button>
