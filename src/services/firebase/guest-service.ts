@@ -89,6 +89,34 @@ class GuestService {
       };
       const hostClubMetadata = await this.resolveHostClubMetadata(clubId, hostClub);
 
+      // Public check-in flows pass host club metadata from the event page.
+      // In that case, avoid guest lookups entirely so anonymous users are not blocked by read rules.
+      if (hostClub) {
+        const guestData = {
+          clubId,
+          clubName: hostClubMetadata.clubName,
+          clubType: hostClubMetadata.clubType,
+          clubCode: hostClubMetadata.clubCode,
+          name: normalizedInput.name,
+          email: normalizedInput.email,
+          phone: normalizedInput.phone,
+          type: normalizedInput.type,
+          club: normalizedInput.club || '',
+          visitCount: 1,
+          lastVisitedOn: Timestamp.now(),
+          createdAt: Timestamp.now(),
+          updatedAt: Timestamp.now(),
+        };
+
+        const docRef = await addDoc(collection(db, this.collectionName), guestData);
+
+        return {
+          guest: this.convertGuestDoc(guestData, docRef.id),
+          isReturningGuest: false,
+          visitCount: 1,
+        };
+      }
+
       // Check if guest exists by email or phone
       let existingGuest: Guest | null = null;
       let canReadExistingGuests = true;

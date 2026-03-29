@@ -164,17 +164,23 @@ class MemberService {
       const membersSnapshot = await getDocs(
         query(
           collection(db, this.collectionName),
-          where('clubId', '==', clubId),
-          where('isActive', '==', true)
+          where('clubId', '==', clubId)
         )
       );
 
       return membersSnapshot.docs
-        .map((item) => this.convertMemberToSearchResult(item.data() as Record<string, unknown>, item.id))
-        .filter((member) => {
+        .map((item) => ({
+          raw: item.data() as Record<string, unknown>,
+          member: this.convertMemberToSearchResult(item.data() as Record<string, unknown>, item.id),
+        }))
+        .filter(({ raw, member }) => {
+          if (raw.isActive === false) {
+            return false;
+          }
           const haystack = `${member.name} ${member.email} ${member.phone} ${member.memberId || ''}`.toLowerCase();
           return haystack.includes(normalizedTerm) || (normalizedPhoneTerm ? member.phone.includes(normalizedPhoneTerm) : false);
         })
+        .map(({ member }) => member)
         .slice(0, 25);
     } catch (error) {
       throw new Error(`Failed to search members: ${(error instanceof Error ? error.message : String(error))}`);

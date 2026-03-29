@@ -207,7 +207,7 @@ service cloud.firestore {
     }
 
     match /members/{memberId} {
-      allow read: if resource.data.isActive == true || (isViewerLike() && canManageClub(resource.data.clubId));
+      allow read: if resource.data.isActive != false || (isViewerLike() && canManageClub(resource.data.clubId));
       allow create: if isClubAdminLike()
         && canManageClub(request.resource.data.clubId)
         && request.resource.data.clubId is string
