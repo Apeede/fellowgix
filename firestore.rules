@@ -73,7 +73,8 @@ service cloud.firestore {
         'personPhone',
         'checkedInAt',
         'eCardGenerated',
-        'eCardUrl'
+        'eCardUrl',
+        'isReturningGuest'
       ]);
     }
 
@@ -107,6 +108,10 @@ service cloud.firestore {
         && request.resource.data.personEmail is string
         && request.resource.data.personPhone is string
         && request.resource.data.checkedInAt is timestamp
+        && (
+          !request.resource.data.keys().hasAny(['isReturningGuest']) ||
+          request.resource.data.isReturningGuest is bool
+        )
         && request.resource.data.eCardGenerated == false
         && request.resource.data.eCardUrl == ''
         && exists(/databases/$(database)/documents/events/$(request.resource.data.eventId))
@@ -188,10 +193,11 @@ service cloud.firestore {
     }
 
     match /clubs/{clubId} {
-      allow read: if isViewerLike() && (
+      allow read: if resource.data.isActive == true || (
+        isViewerLike() && (
         isSuperAdmin() ||
         clubId == adminData().clubId
-      );
+      ));
 
       allow create, update: if isClubAdminLike() && (
         isSuperAdmin() ||
@@ -201,7 +207,7 @@ service cloud.firestore {
     }
 
     match /members/{memberId} {
-      allow read: if isViewerLike() && canManageClub(resource.data.clubId);
+      allow read: if resource.data.isActive == true || (isViewerLike() && canManageClub(resource.data.clubId));
       allow create: if isClubAdminLike()
         && canManageClub(request.resource.data.clubId)
         && request.resource.data.clubId is string

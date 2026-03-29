@@ -12,54 +12,74 @@ const ScannerPage: React.FC = () => {
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
   const mountedRef = useRef(true);
 
+  const clearScanner = async () => {
+    if (scannerRef.current) {
+      await scannerRef.current.clear().catch(() => undefined);
+      scannerRef.current = null;
+    }
+  };
+
+  const initScanner = async () => {
+    setError(null);
+    setHasCamera(null);
+    await clearScanner();
+
+    try {
+      const devices = await Html5QrcodeScanner.getCameras();
+      if (!mountedRef.current) return;
+
+      if (!devices || devices.length === 0) {
+        setHasCamera(false);
+        setError('No camera found on this device');
+        return;
+      }
+
+      setHasCamera(true);
+
+      window.setTimeout(() => {
+        if (!mountedRef.current) return;
+        try {
+          scannerRef.current = new Html5QrcodeScanner(
+            'qr-scanner',
+            {
+              fps: 10,
+              qrbox: { width: 250, height: 250 },
+              aspectRatio: 1,
+              disableFlip: false,
+              rememberLastUsedCamera: true,
+            },
+            false
+          );
+          scannerRef.current.render(onScanSuccess, () => undefined);
+        } catch (err) {
+          console.error('Scanner init error:', err);
+          if (mountedRef.current) {
+            setHasCamera(false);
+            setError('Failed to initialize camera');
+          }
+        }
+      }, 100);
+    } catch (err) {
+      console.error('Camera permission error:', err);
+      if (mountedRef.current) {
+        setHasCamera(false);
+        const needsSecureContext = window.location.protocol !== 'https:' && window.location.hostname !== 'localhost';
+        setError(
+          needsSecureContext
+            ? 'Camera requires a secure HTTPS connection on this device'
+            : 'Camera permission denied or not available'
+        );
+      }
+    }
+  };
+
   useEffect(() => {
     mountedRef.current = true;
-
-    const initScanner = async () => {
-      try {
-        const devices = await Html5QrcodeScanner.getCameras();
-        if (!mountedRef.current) return;
-
-        if (!devices || devices.length === 0) {
-          setHasCamera(false);
-          setError('No camera found on this device');
-          return;
-        }
-
-        setHasCamera(true);
-
-        // Small delay to ensure the #qr-scanner div is in the DOM
-        setTimeout(() => {
-          if (!mountedRef.current) return;
-          try {
-            scannerRef.current = new Html5QrcodeScanner(
-              'qr-scanner',
-              { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1, disableFlip: false },
-              false
-            );
-            scannerRef.current.render(onScanSuccess, () => undefined);
-          } catch (err) {
-            console.error('Scanner init error:', err);
-            if (mountedRef.current) setError('Failed to initialize camera');
-          }
-        }, 100);
-      } catch (err) {
-        console.error('Camera permission error:', err);
-        if (mountedRef.current) {
-          setHasCamera(false);
-          setError('Camera permission denied or not available');
-        }
-      }
-    };
-
     initScanner();
 
     return () => {
       mountedRef.current = false;
-      if (scannerRef.current) {
-        scannerRef.current.clear().catch(() => undefined);
-        scannerRef.current = null;
-      }
+      clearScanner();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -168,7 +188,14 @@ const ScannerPage: React.FC = () => {
               <AlertCircle className="w-12 h-12 text-red-600 mx-auto mb-4" />
               <h3 className="text-lg font-semibold text-red-900 mb-2">Camera Not Available</h3>
               <p className="text-red-700 mb-2">{error || 'Unable to access your device camera'}</p>
-              <p className="text-sm text-red-600">Check camera permissions and try again</p>
+              <p className="text-sm text-red-600 mb-4">Check camera permissions and try again</p>
+              <button
+                type="button"
+                onClick={() => initScanner()}
+                className="btn-primary"
+              >
+                Retry Camera Access
+              </button>
             </div>
           )}
 

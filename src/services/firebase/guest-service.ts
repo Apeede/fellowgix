@@ -1,4 +1,5 @@
 import { CreateGuestInput, Guest, GuestCheckInData } from '@types/guest';
+import { FirebaseError } from 'firebase/app';
 import {
     addDoc,
     collection,
@@ -13,9 +14,48 @@ import {
 import { normalizeClubName, normalizeEmail, normalizeGuestType, normalizePhone } from './club-utils';
 import { db } from './firebase';
 import { firestoreTimestampToDate } from './firestore-utils';
+import { ClubType } from '@types/club';
 
 class GuestService {
   private collectionName = 'guests';
+
+  private isPermissionDenied(error: unknown): boolean {
+    if (error instanceof FirebaseError && error.code === 'permission-denied') {
+      return true;
+    }
+
+    if (error instanceof Error) {
+      const message = error.message.toLowerCase();
+      return (
+        message.includes('permission-denied') ||
+        message.includes('missing or insufficient permissions')
+      );
+    }
+
+    return false;
+  }
+
+  private async resolveHostClubMetadata(
+    clubId: string,
+    hostClub?: { clubName?: string; clubType?: ClubType; clubCode?: string }
+  ): Promise<{ clubName: string; clubType: ClubType; clubCode: string }> {
+    if (hostClub?.clubName) {
+      return {
+        clubName: String(hostClub.clubName || '').trim(),
+        clubType: hostClub.clubType === 'rotary' ? 'rotary' : 'rotaract',
+        clubCode: String(hostClub.clubCode || '').trim(),
+      };
+    }
+
+    const hostClubDoc = await getDoc(doc(db, 'clubs', clubId));
+    const hostClubData = hostClubDoc.exists() ? (hostClubDoc.data() as Record<string, unknown>) : null;
+
+    return {
+      clubName: String(hostClubData?.clubName || '').trim(),
+      clubType: hostClubData?.clubType === 'rotary' ? 'rotary' : 'rotaract',
+      clubCode: String(hostClubData?.clubCode || '').trim(),
+    };
+  }
 
   /**
    * Convert Firestore guest document to Guest type
@@ -34,10 +74,12 @@ class GuestService {
    * Create or get existing guest
    * Returns the guest and whether they are returning
    */
-  async checkInGuest(input: CreateGuestInput, clubId: string): Promise<GuestCheckInData> {
+  async checkInGuest(
+    input: CreateGuestInput,
+    clubId: string,
+    hostClub?: { clubName?: string; clubType?: ClubType; clubCode?: string }
+  ): Promise<GuestCheckInData> {
     try {
-      const hostClub = await getDoc(doc(db, 'clubs', clubId));
-      const hostClubData = hostClub.exists() ? (hostClub.data() as Record<string, unknown>) : null;
       const normalizedInput: CreateGuestInput = {
         ...input,
         email: normalizeEmail(input.email),
@@ -45,15 +87,27 @@ class GuestService {
         type: normalizeGuestType(input.type),
         club: normalizeClubName(input.club),
       };
+      const hostClubMetadata = await this.resolveHostClubMetadata(clubId, hostClub);
 
       // Check if guest exists by email or phone
-      let existingGuest = await this.getGuestByEmail(normalizedInput.email, clubId);
+      let existingGuest: Guest | null = null;
+      let canReadExistingGuests = true;
 
-      if (!existingGuest) {
-        existingGuest = await this.getGuestByPhone(normalizedInput.phone, clubId);
+      try {
+        existingGuest = await this.getGuestByEmail(normalizedInput.email, clubId);
+
+        if (!existingGuest) {
+          existingGuest = await this.getGuestByPhone(normalizedInput.phone, clubId);
+        }
+      } catch (error) {
+        if (this.isPermissionDenied(error)) {
+          canReadExistingGuests = false;
+        } else {
+          throw error;
+        }
       }
 
-      if (existingGuest) {
+      if (existingGuest && canReadExistingGuests) {
         // Increment visit count
         await updateDoc(doc(db, this.collectionName, existingGuest.id), {
           visitCount: existingGuest.visitCount + 1,
@@ -73,9 +127,9 @@ class GuestService {
       // Create new guest
       const guestData = {
         clubId,
-        clubName: String(hostClubData?.clubName || ''),
-        clubType: hostClubData?.clubType === 'rotary' ? 'rotary' : 'rotaract',
-        clubCode: String(hostClubData?.clubCode || '').trim(),
+        clubName: hostClubMetadata.clubName,
+        clubType: hostClubMetadata.clubType,
+        clubCode: hostClubMetadata.clubCode,
         name: normalizedInput.name,
         email: normalizedInput.email,
         phone: normalizedInput.phone,

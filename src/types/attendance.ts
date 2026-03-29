@@ -12,6 +12,7 @@ export interface AttendanceRecord {
   checkedInAt: Date;
   eCardGenerated: boolean;
   eCardUrl?: string;
+  isReturningGuest?: boolean;
   notes?: string;
 }
 

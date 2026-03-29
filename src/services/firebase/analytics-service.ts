@@ -157,9 +157,7 @@ export class AnalyticsService {
       const uniqueAttendeeCount = new Set(records.map((r) => `${r.type}:${r.personId}`)).size;
       const memberCount = records.filter((r) => r.type === 'member').length;
       const guestCount = records.filter((r) => r.type === 'guest').length;
-      const returningGuestCount = records.filter(
-        (r) => r.type === 'guest' && r.isReturningGuest
-      ).length;
+      let returningGuestCount = 0;
       const duplicateCheckInCount = records.filter((r) => r.isDuplicate).length;
       const attendanceRate =
         expectedAttendance > 0 ? Math.min(100, (uniqueAttendeeCount / expectedAttendance) * 100) : 0;
@@ -229,6 +227,9 @@ export class AnalyticsService {
           const guestClub = (guestData?.club || club || '').trim();
           club = guestClub;
           representedClubType = this.getRepresentedClubTypeForGuest(guestType);
+          if (record.isReturningGuest || Number(guestData?.visitCount || 0) > 1) {
+            returningGuestCount += 1;
+          }
 
           guestTypeBreakdown[guestType]++;
           clubTypeBreakdown[representedClubType] += 1;
@@ -601,7 +602,7 @@ export class AnalyticsService {
           row.nonRotarianGuests += 1;
         }
       }
-      if (record.isReturningGuest) {
+      if (type === 'guest' && !personId && record.isReturningGuest) {
         returningGuestCount += 1;
       }
 

@@ -79,6 +79,18 @@ class MemberService {
     };
   }
 
+  private convertMemberToSearchResult(docData: Record<string, unknown>, id: string): MemberSearchResult {
+    return {
+      id,
+      clubId: String(docData.clubId || ''),
+      name: String(docData.name || ''),
+      email: String(docData.email || ''),
+      phone: String(docData.phone || ''),
+      memberId: String(docData.memberId || '').trim() || undefined,
+      club: String(docData.club || docData.clubName || '').trim() || undefined,
+    };
+  }
+
   /**
    * Create a new member
    */
@@ -149,18 +161,17 @@ class MemberService {
     try {
       const normalizedTerm = this.normalizeSearchText(searchTerm);
       const normalizedPhoneTerm = normalizePhone(searchTerm);
-      const constraints = [
+      const results: MemberSearchResult[] = [];
+
+      const emailQuery = query(
+        collection(db, this.publicDirectoryCollectionName),
         where('clubId', '==', clubId),
         where('emailSearch', '>=', normalizedTerm),
-        where('emailSearch', '<=', normalizedTerm + '\uf8ff'),
-      ];
+        where('emailSearch', '<=', normalizedTerm + '\uf8ff')
+      );
+      const emailSnapshot = await getDocs(emailQuery);
+      results.push(...emailSnapshot.docs.map((item) => this.convertSearchResult(item.data() as Record<string, unknown>, item.id)));
 
-      const q = query(collection(db, this.publicDirectoryCollectionName), ...constraints);
-      const querySnapshot = await getDocs(q);
-
-      const results = querySnapshot.docs.map((item) => this.convertSearchResult(item.data() as Record<string, unknown>, item.id));
-
-      // Also search by name and member ID.
       const nameQuery = query(
         collection(db, this.publicDirectoryCollectionName),
         where('clubId', '==', clubId),
@@ -168,7 +179,7 @@ class MemberService {
         where('nameSearch', '<=', normalizedTerm + '\uf8ff')
       );
       const nameSnapshot = await getDocs(nameQuery);
-      const nameResults = nameSnapshot.docs.map((item) => this.convertSearchResult(item.data() as Record<string, unknown>, item.id));
+      results.push(...nameSnapshot.docs.map((item) => this.convertSearchResult(item.data() as Record<string, unknown>, item.id)));
 
       const memberIdQuery = query(
         collection(db, this.publicDirectoryCollectionName),
@@ -177,9 +188,8 @@ class MemberService {
         where('memberIdSearch', '<=', normalizedTerm + '\uf8ff')
       );
       const memberIdSnapshot = await getDocs(memberIdQuery);
-      const memberIdResults = memberIdSnapshot.docs.map((item) => this.convertSearchResult(item.data() as Record<string, unknown>, item.id));
+      results.push(...memberIdSnapshot.docs.map((item) => this.convertSearchResult(item.data() as Record<string, unknown>, item.id)));
 
-      let phoneResults: MemberSearchResult[] = [];
       if (normalizedPhoneTerm) {
         const phoneQuery = query(
           collection(db, this.publicDirectoryCollectionName),
@@ -188,14 +198,30 @@ class MemberService {
           where('phoneSearch', '<=', normalizedPhoneTerm + '\uf8ff')
         );
         const phoneSnapshot = await getDocs(phoneQuery);
-        phoneResults = phoneSnapshot.docs.map((item) => this.convertSearchResult(item.data() as Record<string, unknown>, item.id));
+        results.push(...phoneSnapshot.docs.map((item) => this.convertSearchResult(item.data() as Record<string, unknown>, item.id)));
       }
 
-      // Combine and deduplicate
-      const combined = [...results, ...nameResults, ...memberIdResults, ...phoneResults];
-      const unique = Array.from(new Map(combined.map((item) => [item.id, item])).values());
+      const dedupedDirectoryResults = Array.from(new Map(results.map((item) => [item.id, item])).values());
+      if (dedupedDirectoryResults.length > 0) {
+        return dedupedDirectoryResults;
+      }
 
-      return unique;
+      // Fallback for clubs whose public directory has not been backfilled yet.
+      const membersSnapshot = await getDocs(
+        query(
+          collection(db, this.collectionName),
+          where('clubId', '==', clubId),
+          where('isActive', '==', true)
+        )
+      );
+
+      return membersSnapshot.docs
+        .map((item) => this.convertMemberToSearchResult(item.data() as Record<string, unknown>, item.id))
+        .filter((member) => {
+          const haystack = `${member.name} ${member.email} ${member.phone} ${member.memberId || ''}`.toLowerCase();
+          return haystack.includes(normalizedTerm) || (normalizedPhoneTerm ? member.phone.includes(normalizedPhoneTerm) : false);
+        })
+        .slice(0, 25);
     } catch (error) {
       throw new Error(`Failed to search members: ${(error instanceof Error ? error.message : String(error))}`);
     }

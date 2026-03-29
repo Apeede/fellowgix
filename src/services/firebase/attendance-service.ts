@@ -27,7 +27,8 @@ class AttendanceService {
     personName: string,
     personEmail: string,
     personPhone: string,
-    clubId?: string
+    clubId?: string,
+    options?: { isReturningGuest?: boolean }
   ): Promise<CheckInResponse> {
     try {
       // Check for duplicate check-in (same person, same event, within 5 minutes)
@@ -56,6 +57,7 @@ class AttendanceService {
         checkedInAt: Timestamp.now(),
         eCardGenerated: false,
         eCardUrl: '',
+        isReturningGuest: options?.isReturningGuest === true,
       };
 
       await addDoc(collection(db, this.collectionName), attendanceData);

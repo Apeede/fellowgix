@@ -3,6 +3,7 @@ import { authService } from '@services/firebase/auth-service';
 import { User } from 'firebase/auth';
 import React, { useCallback, useEffect, useState } from 'react';
 import { AuthContext, AuthContextType } from './AuthContextType';
+import { authReady } from '@services/firebase/firebase';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -11,25 +12,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const unsubscribe = authService.onAuthStateChange(async (user) => {
-      setCurrentUser(user);
+    let isMounted = true;
+    let unsubscribe = () => undefined;
 
-      if (user) {
-        try {
-          const admin = await authService.getCurrentAdmin();
-          setCurrentAdmin(admin);
-        } catch (err) {
+    authReady.finally(() => {
+      if (!isMounted) return;
+
+      unsubscribe = authService.onAuthStateChange(async (user) => {
+        if (!isMounted) return;
+        setCurrentUser(user);
+
+        if (user) {
+          try {
+            const admin = await authService.getAdminForUserId(user.uid);
+            if (!isMounted) return;
+            setCurrentAdmin(admin);
+          } catch (err) {
+            if (!isMounted) return;
+            setCurrentAdmin(null);
+            setError('Failed to load admin data');
+          }
+        } else {
           setCurrentAdmin(null);
-          setError('Failed to load admin data');
         }
-      } else {
-        setCurrentAdmin(null);
-      }
 
-      setLoading(false);
+        if (isMounted) setLoading(false);
+      });
     });
 
-    return () => unsubscribe();
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
   }, []);
 
   const loginAdmin = useCallback(async (email: string, password: string) => {

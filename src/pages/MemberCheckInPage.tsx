@@ -18,43 +18,58 @@ const MemberCheckInPage: React.FC = () => {
   const [isCheckingIn, setIsCheckingIn] = useState(false);
   const [checkInResult, setCheckInResult] = useState<{ success: boolean; isDuplicate: boolean; message: string } | null>(null);
   const [eventClubId, setEventClubId] = useState<string>('');
+  const [isEventLoading, setIsEventLoading] = useState(true);
 
   useEffect(() => {
     const loadEventClub = async () => {
       if (!eventId) return;
+      setIsEventLoading(true);
       try {
         const event = await eventService.getEventById(eventId);
         setEventClubId(event?.clubId || '');
       } catch (error) {
         setEventClubId('');
+      } finally {
+        setIsEventLoading(false);
       }
     };
     loadEventClub();
   }, [eventId]);
 
-  const handleSearch = async (term: string) => {
-    setSearchTerm(term);
+  useEffect(() => {
+    const term = searchTerm.trim();
 
-    if (term.length < 2) {
+    if (term.length < 2 || !eventClubId) {
       setSearchResults([]);
+      setIsSearching(false);
       return;
     }
 
-    setIsSearching(true);
-    try {
-      if (!eventClubId) {
-        setSearchResults([]);
-        return;
+    let isActive = true;
+    const timer = window.setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const results = await memberService.searchMembers(term, eventClubId);
+        if (isActive) {
+          setSearchResults(results);
+        }
+      } catch (error) {
+        if (isActive) {
+          toast.error('Failed to search members');
+          console.error(error);
+        }
+      } finally {
+        if (isActive) {
+          setIsSearching(false);
+        }
       }
-      const results = await memberService.searchMembers(term, eventClubId);
-      setSearchResults(results);
-    } catch (error) {
-      toast.error('Failed to search members');
-      console.error(error);
-    } finally {
-      setIsSearching(false);
-    }
-  };
+    }, 250);
+
+    return () => {
+      isActive = false;
+      window.clearTimeout(timer);
+    };
+  }, [eventClubId, searchTerm]);
 
   const handleSelectMember = (member: MemberSearchResult) => {
     setSelectedMember(member);
@@ -220,16 +235,32 @@ const MemberCheckInPage: React.FC = () => {
                   id="member-search"
                   type="text"
                   value={searchTerm}
-                  onChange={(e) => handleSearch(e.target.value)}
+                  onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder="Search by name or email..."
                   className="input-field pl-10"
                   autoFocus
+                  disabled={isEventLoading || !eventClubId}
                 />
               </div>
             </div>
 
+            {isEventLoading && (
+              <div className="text-center py-6">
+                <Loader className="w-8 h-8 text-primary-600 animate-spin mx-auto mb-2" />
+                <p className="text-gray-600">Preparing check-in...</p>
+              </div>
+            )}
+
+            {!isEventLoading && !eventClubId && (
+              <div className="text-center py-6">
+                <AlertCircle className="w-10 h-10 text-red-500 mx-auto mb-2" />
+                <p className="text-gray-700">This event is missing club access details.</p>
+                <p className="text-sm text-gray-500">Ask an admin to reopen the QR code from Event Manager.</p>
+              </div>
+            )}
+
             {/* Loading State */}
-            {isSearching && (
+            {isSearching && eventClubId && (
               <div className="text-center py-8">
                 <Loader className="w-8 h-8 text-primary-600 animate-spin mx-auto mb-2" />
                 <p className="text-gray-600">Searching...</p>
@@ -275,7 +306,7 @@ const MemberCheckInPage: React.FC = () => {
             )}
 
             {/* Help Text */}
-            {searchTerm.length < 2 && searchResults.length === 0 && (
+            {searchTerm.length < 2 && searchResults.length === 0 && !isEventLoading && eventClubId && (
               <div className="text-center py-8 text-gray-500">
                 <p>Start typing your name or email to search</p>
               </div>

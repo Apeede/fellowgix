@@ -29,16 +29,31 @@ const GuestCheckInPage: React.FC = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [checkInResult, setCheckInResult] = useState<CheckInResult | null>(null);
-  const [eventClubId, setEventClubId] = useState<string>('');
+  const [eventClub, setEventClub] = useState({
+    clubId: '',
+    clubName: '',
+    clubType: 'rotaract' as 'rotary' | 'rotaract',
+    clubCode: '',
+  });
 
   useEffect(() => {
     const loadEventClub = async () => {
       if (!eventId) return;
       try {
         const event = await eventService.getEventById(eventId);
-        setEventClubId(event?.clubId || '');
+        setEventClub({
+          clubId: event?.clubId || '',
+          clubName: event?.clubName || '',
+          clubType: event?.clubType === 'rotary' ? 'rotary' : 'rotaract',
+          clubCode: event?.clubCode || '',
+        });
       } catch (error) {
-        setEventClubId('');
+        setEventClub({
+          clubId: '',
+          clubName: '',
+          clubType: 'rotaract',
+          clubCode: '',
+        });
       }
     };
     loadEventClub();
@@ -95,7 +110,7 @@ const GuestCheckInPage: React.FC = () => {
       return;
     }
 
-    if (!eventClubId) {
+    if (!eventClub.clubId) {
       toast.error('Event club information is missing');
       return;
     }
@@ -103,7 +118,11 @@ const GuestCheckInPage: React.FC = () => {
     setIsSubmitting(true);
     try {
       // Check in guest (creates if new, updates if returning)
-      const guestData = await guestService.checkInGuest(formData, eventClubId);
+      const guestData = await guestService.checkInGuest(formData, eventClub.clubId, {
+        clubName: eventClub.clubName,
+        clubType: eventClub.clubType,
+        clubCode: eventClub.clubCode,
+      });
 
       // Record attendance
       const result = await attendanceService.recordAttendance(
@@ -113,7 +132,8 @@ const GuestCheckInPage: React.FC = () => {
         guestData.guest.name,
         guestData.guest.email,
         guestData.guest.phone,
-        eventClubId
+        eventClub.clubId,
+        { isReturningGuest: guestData.isReturningGuest }
       );
 
       setCheckInResult({

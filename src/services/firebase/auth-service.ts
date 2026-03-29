@@ -13,7 +13,7 @@ import { firebaseConfig } from '../../config/firebase-config';
 import { ClubType } from '../../types/club';
 import { buildClubId, normalizeClubCode, normalizeClubName } from './club-utils';
 import { clubService } from './club-service';
-import { auth, db } from './firebase';
+import { auth, authReady, db } from './firebase';
 
 export interface Admin {
   id: string;
@@ -196,40 +196,13 @@ class AuthService {
    * Get current admin
    */
   async getCurrentAdmin(): Promise<Admin | null> {
-    return new Promise((resolve) => {
-      const unsubscribe = onAuthStateChanged(auth, async (user) => {
-        if (!user) {
-          resolve(null);
-          return;
-        }
+    await authReady;
+    const user = auth.currentUser;
+    if (!user) {
+      return null;
+    }
 
-        try {
-          const adminDoc = await getDoc(doc(db, 'admins', user.uid));
-          if (adminDoc.exists()) {
-            const normalized = await this.normalizeAdmin(adminDoc.data() as Admin, user.uid);
-            // Backfill club metadata for legacy admins
-            await setDoc(
-              doc(db, 'admins', user.uid),
-              {
-                clubId: normalized.clubId,
-                clubName: normalized.clubName,
-                clubType: normalized.clubType || null,
-                clubCode: normalized.clubCode || null,
-              },
-              { merge: true }
-            );
-            resolve(normalized);
-          } else {
-            resolve(null);
-          }
-        } catch (error) {
-          resolve(null);
-        }
-      });
-
-      // Unsubscribe after getting the first result
-      setTimeout(() => unsubscribe(), 100);
-    });
+    return this.getAdminForUserId(user.uid);
   }
 
   /**
@@ -252,6 +225,31 @@ class AuthService {
    */
   onAuthStateChange(callback: (user: User | null) => void): () => void {
     return onAuthStateChanged(auth, callback);
+  }
+
+  async getAdminForUserId(userId: string): Promise<Admin | null> {
+    try {
+      const adminDoc = await getDoc(doc(db, 'admins', userId));
+      if (!adminDoc.exists()) {
+        return null;
+      }
+
+      const normalized = await this.normalizeAdmin(adminDoc.data() as Admin, userId);
+      await setDoc(
+        doc(db, 'admins', userId),
+        {
+          clubId: normalized.clubId,
+          clubName: normalized.clubName,
+          clubType: normalized.clubType || null,
+          clubCode: normalized.clubCode || null,
+        },
+        { merge: true }
+      );
+
+      return normalized;
+    } catch {
+      return null;
+    }
   }
 
   private async assertClubAdminCapacity(clubId: string): Promise<void> {
