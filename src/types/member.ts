@@ -1,8 +1,13 @@
 // Member types and interfaces
 
+import { ClubType } from './club';
+
 export interface Member {
   id: string;
-  clubId?: string;
+  clubId: string;
+  clubName?: string;
+  clubType?: ClubType;
+  clubCode?: string;
   createdByAdminId?: string;
   name: string;
   email: string;
@@ -20,7 +25,6 @@ export interface CreateMemberInput {
   email: string;
   phone: string;
   memberId?: string;
-  club?: string;
 }
 
 export interface UpdateMemberInput {
@@ -32,8 +36,10 @@ export interface UpdateMemberInput {
 
 export interface MemberSearchResult {
   id: string;
+  clubId?: string;
   name: string;
   email: string;
   phone: string;
+  memberId?: string;
   club?: string;
 }

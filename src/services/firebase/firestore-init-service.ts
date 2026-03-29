@@ -23,12 +23,28 @@ const FIRESTORE_SCHEMA: Record<string, FirestoreCollectionSchema> = {
       id: 'uid_of_admin',
       email: 'admin@example.com',
       name: 'Admin Name',
-      clubId: 'rotaract-club-name',
+      clubId: 'rotaract-rotaract-club-name',
       clubName: 'Rotaract Club Name',
+      clubType: 'rotaract',
+      clubCode: 'RCN',
       role: 'super_admin', // super_admin or admin
       createdAt: new Date(),
       lastLogin: new Date(),
       isActive: true,
+    },
+  },
+  clubs: {
+    name: 'clubs',
+    description: 'Canonical club records shared by admins, members, guests, and events',
+    example: {
+      clubId: 'rotaract-rotaract-club-name',
+      clubName: 'Rotaract Club Name',
+      clubType: 'rotaract',
+      clubCode: 'RCN',
+      normalizedName: 'rotaract club name',
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     },
   },
   members: {
@@ -39,6 +55,9 @@ const FIRESTORE_SCHEMA: Record<string, FirestoreCollectionSchema> = {
       email: 'john@example.com',
       phone: '1234567890',
       memberId: 'R12345',
+      clubId: 'rotaract-rotaract-club-name',
+      clubName: 'Rotaract Club Name',
+      clubType: 'rotaract',
       club: 'Rotaract Club Name',
       joinDate: new Date(),
       isActive: true,
@@ -152,20 +171,35 @@ class FirestoreInitService {
         batch.set(adminRef, {
           email: 'admin@rotaract.local',
           name: 'Default Admin',
-          clubId: 'default-club',
+          clubId: 'rotaract-default-club',
           clubName: 'Default Club',
+          clubType: 'rotaract',
+          clubCode: 'DFC',
           role: 'super_admin',
           createdAt: new Date(),
           isActive: true,
         });
+        const clubRef = doc(db, 'clubs', 'rotaract-default-club');
+        batch.set(clubRef, {
+          clubId: 'rotaract-default-club',
+          clubName: 'Default Club',
+          clubType: 'rotaract',
+          clubCode: 'DFC',
+          normalizedName: 'default club',
+          isActive: true,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
         results['admins'] = 1;
+        results['clubs'] = 1;
       } else {
         results['admins'] = adminCount;
+        results['clubs'] = await this.getCollectionDocCount('clubs');
       }
 
       // Check other collections
       for (const [collName] of Object.entries(FIRESTORE_SCHEMA)) {
-        if (collName === 'admins') continue;
+        if (results[collName] !== undefined || collName === 'admins') continue;
         const count = await this.getCollectionDocCount(collName);
         results[collName] = count;
       }

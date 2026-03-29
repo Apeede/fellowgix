@@ -12,7 +12,6 @@ const emptyForm: CreateMemberInput = {
   email: '',
   phone: '',
   memberId: '',
-  club: '',
 };
 
 const MembersPage: React.FC = () => {
@@ -31,6 +30,7 @@ const MembersPage: React.FC = () => {
     setIsLoading(true);
     try {
       const data = await memberService.getAllActiveMembers(currentAdmin.clubId);
+      await memberService.syncPublicDirectoryForMembers(data);
       setMembers(data);
     } catch (error) {
       toast.error('Failed to load members');
@@ -264,20 +264,14 @@ const MembersPage: React.FC = () => {
                   />
                 </div>
 
-                <div className="md:col-span-2">
-                  <label htmlFor="club" className="block text-sm font-medium text-gray-700 mb-1">
-                    Club Name
-                  </label>
-                  <input
-                    id="club"
-                    type="text"
-                    name="club"
-                    value={formData.club}
-                    onChange={handleChange}
-                    placeholder="Rotaract Club of..."
-                    className="input-field"
-                    disabled={isSubmitting}
-                  />
+                <div className="md:col-span-2 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
+                  <p className="text-sm font-medium text-gray-700">Assigned Club</p>
+                  <p className="text-sm text-gray-900 mt-1">
+                    {currentAdmin?.clubName || currentAdmin?.clubId || 'Not configured'}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Members added here are automatically linked to this club.
+                  </p>
                 </div>
               </div>
 

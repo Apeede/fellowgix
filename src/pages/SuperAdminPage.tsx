@@ -1,4 +1,5 @@
 import { useAuth } from '@context/useAuth';
+import { ClubType } from '@types/club';
 import { Admin, authService } from '@services/firebase/auth-service';
 import {
   addDoc,
@@ -23,6 +24,8 @@ import { db } from '../services/firebase/firebase';
 interface ClubSummary {
   clubId: string;
   clubName: string;
+  clubType: ClubType;
+  clubCode?: string;
   adminCount: number;
   eventCount: number;
   memberCount: number;
@@ -84,7 +87,7 @@ interface TrashRecord {
 
 type AdminRole = 'super_admin' | 'club_admin' | 'event_manager' | 'viewer';
 
-const CLUB_COLLECTIONS = ['admins', 'events', 'members', 'guests', 'attendance'] as const;
+const CLUB_COLLECTIONS = ['clubs', 'admins', 'events', 'members', 'guests', 'attendance'] as const;
 
 type ClubCollection = (typeof CLUB_COLLECTIONS)[number];
 
@@ -128,7 +131,10 @@ const SuperAdminPage: React.FC = () => {
     name: '',
     email: '',
     password: '',
+    clubId: '',
     clubName: '',
+    clubType: 'rotaract' as ClubType,
+    clubCode: '',
     role: 'club_admin' as AdminRole,
     sendInviteEmail: true,
   });
@@ -162,8 +168,9 @@ const SuperAdminPage: React.FC = () => {
   const loadSystemData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [adminsSnap, eventsSnap, membersSnap, guestsSnap, attendanceSnap, auditLogsSnap, trashSnap] =
+      const [clubsSnap, adminsSnap, eventsSnap, membersSnap, guestsSnap, attendanceSnap, auditLogsSnap, trashSnap] =
         await Promise.all([
+          getDocs(collection(db, 'clubs')),
           getDocs(query(collection(db, 'admins'), orderBy('createdAt', 'desc'))),
           getDocs(collection(db, 'events')),
           getDocs(collection(db, 'members')),
@@ -187,13 +194,15 @@ const SuperAdminPage: React.FC = () => {
       setAdmins(allAdmins);
 
       const clubMap = new Map<string, ClubSummary>();
-      const ensureClub = (clubId: string, clubName?: string) => {
+      const ensureClub = (clubId: string, clubName?: string, clubType: ClubType = 'rotaract', clubCode?: string) => {
         const id = (clubId || '').trim();
         if (!id) return null;
         if (!clubMap.has(id)) {
           clubMap.set(id, {
             clubId: id,
             clubName: (clubName || id).trim() || id,
+            clubType,
+            clubCode: clubCode?.trim() || undefined,
             adminCount: 0,
             eventCount: 0,
             memberCount: 0,
@@ -204,26 +213,51 @@ const SuperAdminPage: React.FC = () => {
         return clubMap.get(id)!;
       };
 
+      clubsSnap.docs.forEach((d) => {
+        const data = d.data() as Record<string, unknown>;
+        ensureClub(
+          String(data.clubId || d.id),
+          String(data.clubName || d.id),
+          data.clubType === 'rotary' ? 'rotary' : 'rotaract',
+          String(data.clubCode || '')
+        );
+      });
+
       allAdmins.forEach((admin) => {
-        const row = ensureClub(admin.clubId, admin.clubName);
+        const row = ensureClub(admin.clubId, admin.clubName, admin.clubType || 'rotaract', admin.clubCode);
         if (row) row.adminCount += 1;
       });
 
       eventsSnap.docs.forEach((d) => {
         const data = d.data() as Record<string, unknown>;
-        const row = ensureClub(String(data.clubId || ''), String(data.clubName || ''));
+        const row = ensureClub(
+          String(data.clubId || ''),
+          String(data.clubName || ''),
+          data.clubType === 'rotary' ? 'rotary' : 'rotaract',
+          String(data.clubCode || '')
+        );
         if (row) row.eventCount += 1;
       });
 
       membersSnap.docs.forEach((d) => {
         const data = d.data() as Record<string, unknown>;
-        const row = ensureClub(String(data.clubId || ''), String(data.club || ''));
+        const row = ensureClub(
+          String(data.clubId || ''),
+          String(data.clubName || data.club || ''),
+          data.clubType === 'rotary' ? 'rotary' : 'rotaract',
+          String(data.clubCode || '')
+        );
         if (row) row.memberCount += 1;
       });
 
       guestsSnap.docs.forEach((d) => {
         const data = d.data() as Record<string, unknown>;
-        const row = ensureClub(String(data.clubId || ''), String(data.club || ''));
+        const row = ensureClub(
+          String(data.clubId || ''),
+          String(data.clubName || ''),
+          data.clubType === 'rotary' ? 'rotary' : 'rotaract',
+          String(data.clubCode || '')
+        );
         if (row) row.guestCount += 1;
       });
 
@@ -237,7 +271,7 @@ const SuperAdminPage: React.FC = () => {
       setClubs(clubRows);
 
       setStats({
-        clubs: clubRows.length,
+        clubs: clubsSnap.size || clubRows.length,
         admins: allAdmins.length,
         activeAdmins: allAdmins.filter((a) => a.isActive).length,
         events: eventsSnap.size,
@@ -330,7 +364,10 @@ const SuperAdminPage: React.FC = () => {
         name: form.name.trim(),
         email: form.email.trim().toLowerCase(),
         password: effectivePassword,
+        clubId: form.clubId || undefined,
         clubName: form.clubName.trim(),
+        clubType: form.clubType,
+        clubCode: form.clubCode.trim() || undefined,
         role: form.role,
         sendInviteEmail: form.sendInviteEmail,
       });
@@ -339,10 +376,22 @@ const SuperAdminPage: React.FC = () => {
         role: newAdmin.role,
         clubId: newAdmin.clubId,
         clubName: newAdmin.clubName,
+        clubType: newAdmin.clubType || 'rotaract',
+        clubCode: newAdmin.clubCode || null,
         inviteStatus: newAdmin.inviteStatus || 'accepted',
       });
       toast.success('Admin created successfully');
-      setForm({ name: '', email: '', password: '', clubName: '', role: 'club_admin', sendInviteEmail: true });
+      setForm({
+        name: '',
+        email: '',
+        password: '',
+        clubId: '',
+        clubName: '',
+        clubType: 'rotaract',
+        clubCode: '',
+        role: 'club_admin',
+        sendInviteEmail: true,
+      });
       await loadSystemData();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to create admin');
@@ -560,7 +609,7 @@ const SuperAdminPage: React.FC = () => {
       });
 
       toast.success(
-        `Club archived (admins:${archiveCounts.admins}, events:${archiveCounts.events}, members:${archiveCounts.members}, guests:${archiveCounts.guests}, attendance:${archiveCounts.attendance})`
+        `Club archived (club:${archiveCounts.clubs}, admins:${archiveCounts.admins}, events:${archiveCounts.events}, members:${archiveCounts.members}, guests:${archiveCounts.guests}, attendance:${archiveCounts.attendance})`
       );
       await loadSystemData();
     } catch {
@@ -655,7 +704,9 @@ const SuperAdminPage: React.FC = () => {
         admin.name.toLowerCase().includes(term) ||
         admin.email.toLowerCase().includes(term) ||
         (admin.clubName || '').toLowerCase().includes(term) ||
-        admin.clubId.toLowerCase().includes(term);
+        admin.clubId.toLowerCase().includes(term) ||
+        (admin.clubCode || '').toLowerCase().includes(term) ||
+        (admin.clubType || '').toLowerCase().includes(term);
       return rolePass && statusPass && searchPass;
     });
   }, [sortedAdmins, adminSearch, adminRoleFilter, adminStatusFilter]);
@@ -726,13 +777,56 @@ const SuperAdminPage: React.FC = () => {
               <div className="card bg-red-50"><p className="text-xs text-gray-600">Attendance</p><p className="text-2xl font-bold">{stats.attendance}</p></div>
             </section>
 
+            <section className="card">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                  <h2 className="text-lg font-bold text-gray-900">System Comparison</h2>
+                  <p className="text-sm text-gray-600">See Rotary vs Rotaract performance across the full platform.</p>
+                </div>
+                <button type="button" className="btn-outline" onClick={() => navigate('/analytics/system')}>
+                  Open System Analytics
+                </button>
+              </div>
+            </section>
+
             <section className="grid grid-cols-1 xl:grid-cols-2 gap-6">
               <div className="card">
                 <h2 className="text-xl font-bold text-gray-900 mb-4">Create Club Admin</h2>
                 <form onSubmit={handleCreateAdmin} className="space-y-4">
                   <input className="input-field" placeholder="Name" value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} />
                   <input className="input-field" type="email" placeholder="Email" value={form.email} onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))} />
+                  <select
+                    className="input-field"
+                    value={form.clubId || '__new__'}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value === '__new__') {
+                        setForm((p) => ({ ...p, clubId: '', clubName: '', clubType: 'rotaract', clubCode: '' }));
+                        return;
+                      }
+                      const selectedClub = clubs.find((club) => club.clubId === value);
+                      setForm((p) => ({
+                        ...p,
+                        clubId: value,
+                        clubName: selectedClub?.clubName || '',
+                        clubType: selectedClub?.clubType || 'rotaract',
+                        clubCode: selectedClub?.clubCode || '',
+                      }));
+                    }}
+                  >
+                    <option value="__new__">Create New Club</option>
+                    {clubs.map((club) => (
+                      <option key={club.clubId} value={club.clubId}>
+                        {club.clubName} ({club.clubType})
+                      </option>
+                    ))}
+                  </select>
                   <input className="input-field" placeholder="Club Name" value={form.clubName} onChange={(e) => setForm((p) => ({ ...p, clubName: e.target.value }))} />
+                  <select className="input-field" value={form.clubType} onChange={(e) => setForm((p) => ({ ...p, clubType: e.target.value as ClubType }))}>
+                    <option value="rotaract">Rotaract Club</option>
+                    <option value="rotary">Rotary Club</option>
+                  </select>
+                  <input className="input-field" placeholder="Club Code (optional)" value={form.clubCode} onChange={(e) => setForm((p) => ({ ...p, clubCode: e.target.value }))} />
                   <select className="input-field" value={form.role} onChange={(e) => setForm((p) => ({ ...p, role: e.target.value as AdminRole }))}>
                     <option value="viewer">Viewer</option>
                     <option value="event_manager">Event Manager</option>
@@ -762,7 +856,11 @@ const SuperAdminPage: React.FC = () => {
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <p className="font-semibold text-gray-900">{club.clubName}</p>
-                          <p className="text-xs text-gray-500">{club.clubId}</p>
+                          <p className="text-xs text-gray-500">
+                            {club.clubId}
+                            {club.clubCode ? ` • ${club.clubCode}` : ''}
+                            {` • ${club.clubType.toUpperCase()}`}
+                          </p>
                           <p className="text-sm text-gray-600 mt-1">
                             Admins: {club.adminCount} | Events: {club.eventCount} | Members: {club.memberCount} | Guests: {club.guestCount} | Attendance: {club.attendanceCount}
                           </p>
@@ -838,7 +936,14 @@ const SuperAdminPage: React.FC = () => {
                             <p className="text-xs text-amber-700 mt-1">Invite pending</p>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-700">{admin.clubName || admin.clubId}</td>
+                        <td className="px-4 py-3 text-sm text-gray-700">
+                          <p>{admin.clubName || admin.clubId}</p>
+                          <p className="text-xs text-gray-500">
+                            {admin.clubId}
+                            {admin.clubCode ? ` • ${admin.clubCode}` : ''}
+                            {admin.clubType ? ` • ${admin.clubType.toUpperCase()}` : ''}
+                          </p>
+                        </td>
                         <td className="px-4 py-3 text-sm uppercase text-gray-700">
                           <select
                             className="input-field py-1 text-xs min-w-[140px]"

@@ -124,7 +124,7 @@ const LoginPage: React.FC = () => {
 
           {/* Footer */}
           <div className="mt-6 text-center text-sm text-gray-600">
-            <p>Demo: Use test credentials provided by administrator</p>
+            <p>Secure access for authorized club administrators</p>
           </div>
         </div>
       </div>

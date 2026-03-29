@@ -1,5 +1,5 @@
 import { useAuth } from '@context/useAuth';
-import { AnalyticsService, ClubAnalyticsSummary } from '@services/firebase/analytics-service';
+import { AnalyticsService, ClubAnalyticsSummary, RepresentedClubType } from '@services/firebase/analytics-service';
 import { ArrowLeft, Download, Loader } from 'lucide-react';
 import React, { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
@@ -12,6 +12,7 @@ const ClubAnalyticsPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
+  const [comparisonFilter, setComparisonFilter] = useState<'all' | RepresentedClubType>('all');
 
   const loadAnalytics = useCallback(async () => {
     if (!currentAdmin?.clubId) return;
@@ -37,6 +38,11 @@ const ClubAnalyticsPage: React.FC = () => {
   if (!currentAdmin) {
     return null;
   }
+
+  const filteredClubComparison =
+    comparisonFilter === 'all'
+      ? analytics?.clubComparison || []
+      : (analytics?.clubComparison || []).filter((entry) => entry.clubType === comparisonFilter);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -101,6 +107,53 @@ const ClubAnalyticsPage: React.FC = () => {
               <div className="card bg-pink-50"><p className="text-xs text-gray-600">Guests</p><p className="text-2xl font-bold">{analytics.guestCount}</p></div>
             </section>
 
+            <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="card bg-sky-50"><p className="text-xs text-gray-600">Rotary Reach</p><p className="text-2xl font-bold">{analytics.clubTypeBreakdown.rotary}</p></div>
+              <div className="card bg-emerald-50"><p className="text-xs text-gray-600">Rotaract Reach</p><p className="text-2xl font-bold">{analytics.clubTypeBreakdown.rotaract}</p></div>
+              <div className="card bg-violet-50"><p className="text-xs text-gray-600">Member Club Reach</p><p className="text-2xl font-bold">{analytics.clubTypeBreakdown.member}</p></div>
+              <div className="card bg-slate-100"><p className="text-xs text-gray-600">Unknown Reach</p><p className="text-2xl font-bold">{analytics.clubTypeBreakdown.unknown}</p></div>
+            </section>
+
+            <section className="grid md:grid-cols-2 gap-6">
+              <div className="card">
+                <h2 className="text-lg font-bold text-gray-900 mb-4">Guest Type Mix</h2>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between"><span className="text-gray-600">Rotarians</span><span className="font-semibold text-gray-900">{analytics.guestTypeBreakdown.rotarian}</span></div>
+                  <div className="flex items-center justify-between"><span className="text-gray-600">Rotaractors</span><span className="font-semibold text-gray-900">{analytics.guestTypeBreakdown.rotaractor}</span></div>
+                  <div className="flex items-center justify-between"><span className="text-gray-600">Non-Rotaractors</span><span className="font-semibold text-gray-900">{analytics.guestTypeBreakdown.non_rotaractor}</span></div>
+                </div>
+              </div>
+
+              <div className="card">
+                <div className="flex items-center justify-between gap-3 mb-4">
+                  <h2 className="text-lg font-bold text-gray-900">Cross-Club Reach</h2>
+                  <select
+                    className="input-field max-w-xs"
+                    value={comparisonFilter}
+                    onChange={(e) => setComparisonFilter(e.target.value as 'all' | RepresentedClubType)}
+                  >
+                    <option value="all">All Club Types</option>
+                    <option value="rotary">Rotary</option>
+                    <option value="rotaract">Rotaract</option>
+                    <option value="member">Member Clubs</option>
+                    <option value="unknown">Unknown</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  {filteredClubComparison.slice(0, 12).map((entry) => (
+                    <div key={`${entry.clubType}-${entry.club}`} className="flex items-center justify-between border border-gray-200 rounded-lg px-3 py-2">
+                      <div>
+                        <p className="text-sm text-gray-900">{entry.club}</p>
+                        <p className="text-xs uppercase text-gray-500">{entry.clubType}</p>
+                      </div>
+                      <p className="text-sm font-semibold text-gray-900">{entry.count}</p>
+                    </div>
+                  ))}
+                  {filteredClubComparison.length === 0 && <p className="text-sm text-gray-600">No cross-club attendance found for this filter.</p>}
+                </div>
+              </div>
+            </section>
+
             <section className="card">
               <h2 className="text-lg font-bold text-gray-900 mb-4">Attendance Trend (by Day)</h2>
               <div className="space-y-2">
@@ -126,6 +179,9 @@ const ClubAnalyticsPage: React.FC = () => {
                       <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Unique</th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Members</th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Guests</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Rotary Guests</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Rotaract Guests</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Other Guests</th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Rate</th>
                     </tr>
                   </thead>
@@ -138,12 +194,15 @@ const ClubAnalyticsPage: React.FC = () => {
                         <td className="px-4 py-3 text-sm text-gray-700">{row.uniqueAttendees}</td>
                         <td className="px-4 py-3 text-sm text-gray-700">{row.memberCount}</td>
                         <td className="px-4 py-3 text-sm text-gray-700">{row.guestCount}</td>
+                        <td className="px-4 py-3 text-sm text-gray-700">{row.rotaryGuestCount}</td>
+                        <td className="px-4 py-3 text-sm text-gray-700">{row.rotaractGuestCount}</td>
+                        <td className="px-4 py-3 text-sm text-gray-700">{row.nonRotarianGuestCount}</td>
                         <td className="px-4 py-3 text-sm text-gray-700">{row.attendanceRate.toFixed(1)}%</td>
                       </tr>
                     ))}
                     {analytics.eventRows.length === 0 && (
                       <tr>
-                        <td colSpan={7} className="px-4 py-6 text-center text-gray-600">No events found for this date range.</td>
+                        <td colSpan={10} className="px-4 py-6 text-center text-gray-600">No events found for this date range.</td>
                       </tr>
                     )}
                   </tbody>

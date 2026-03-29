@@ -1,8 +1,13 @@
 // Guest types and interfaces
 
+import { ClubType } from './club';
+
 export interface Guest {
   id: string;
   clubId?: string;
+  clubName?: string;
+  clubType?: ClubType;
+  clubCode?: string;
   name: string;
   email: string;
   phone: string;

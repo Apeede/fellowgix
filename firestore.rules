@@ -62,14 +62,100 @@ service cloud.firestore {
       ]);
     }
 
+    function attendanceHasOnlyAllowedFields() {
+      return request.resource.data.keys().hasOnly([
+        'eventId',
+        'clubId',
+        'type',
+        'personId',
+        'personName',
+        'personEmail',
+        'personPhone',
+        'checkedInAt',
+        'eCardGenerated',
+        'eCardUrl'
+      ]);
+    }
+
+    function isValidPublicMemberAttendance() {
+      return request.resource.data.type == 'member'
+        && exists(/databases/$(database)/documents/members/$(request.resource.data.personId))
+        && get(/databases/$(database)/documents/members/$(request.resource.data.personId)).data.clubId == request.resource.data.clubId
+        && get(/databases/$(database)/documents/members/$(request.resource.data.personId)).data.isActive == true
+        && get(/databases/$(database)/documents/members/$(request.resource.data.personId)).data.name == request.resource.data.personName
+        && get(/databases/$(database)/documents/members/$(request.resource.data.personId)).data.email == request.resource.data.personEmail
+        && get(/databases/$(database)/documents/members/$(request.resource.data.personId)).data.phone == request.resource.data.personPhone;
+    }
+
+    function isValidPublicGuestAttendance() {
+      return request.resource.data.type == 'guest'
+        && exists(/databases/$(database)/documents/guests/$(request.resource.data.personId))
+        && get(/databases/$(database)/documents/guests/$(request.resource.data.personId)).data.clubId == request.resource.data.clubId
+        && get(/databases/$(database)/documents/guests/$(request.resource.data.personId)).data.name == request.resource.data.personName
+        && get(/databases/$(database)/documents/guests/$(request.resource.data.personId)).data.email == request.resource.data.personEmail
+        && get(/databases/$(database)/documents/guests/$(request.resource.data.personId)).data.phone == request.resource.data.personPhone;
+    }
+
     function validPublicAttendanceCreate() {
       return hasRequiredAttendanceFields()
+        && attendanceHasOnlyAllowedFields()
         && request.resource.data.eventId is string
         && request.resource.data.clubId is string
         && request.resource.data.type in ['member', 'guest']
+        && request.resource.data.personId is string
+        && request.resource.data.personName is string
+        && request.resource.data.personEmail is string
+        && request.resource.data.personPhone is string
+        && request.resource.data.checkedInAt is timestamp
+        && request.resource.data.eCardGenerated == false
+        && request.resource.data.eCardUrl == ''
         && exists(/databases/$(database)/documents/events/$(request.resource.data.eventId))
         && get(/databases/$(database)/documents/events/$(request.resource.data.eventId)).data.clubId == request.resource.data.clubId
-        && get(/databases/$(database)/documents/events/$(request.resource.data.eventId)).data.isActive == true;
+        && get(/databases/$(database)/documents/events/$(request.resource.data.eventId)).data.isActive == true
+        && (
+          isValidPublicMemberAttendance() ||
+          isValidPublicGuestAttendance()
+        );
+    }
+
+    function validPublicGuestCreate() {
+      return request.resource.data.keys().hasOnly([
+          'clubId',
+          'clubName',
+          'clubType',
+          'clubCode',
+          'name',
+          'email',
+          'phone',
+          'type',
+          'club',
+          'visitCount',
+          'lastVisitedOn',
+          'createdAt',
+          'updatedAt'
+        ])
+        && request.resource.data.clubId is string
+        && request.resource.data.clubId.size() > 0
+        && exists(/databases/$(database)/documents/clubs/$(request.resource.data.clubId))
+        && get(/databases/$(database)/documents/clubs/$(request.resource.data.clubId)).data.isActive == true
+        && request.resource.data.clubName == get(/databases/$(database)/documents/clubs/$(request.resource.data.clubId)).data.clubName
+        && request.resource.data.clubType == get(/databases/$(database)/documents/clubs/$(request.resource.data.clubId)).data.clubType
+        && (
+          request.resource.data.clubCode == get(/databases/$(database)/documents/clubs/$(request.resource.data.clubId)).data.clubCode ||
+          (
+            request.resource.data.clubCode == '' &&
+            get(/databases/$(database)/documents/clubs/$(request.resource.data.clubId)).data.clubCode == null
+          )
+        )
+        && request.resource.data.name is string
+        && request.resource.data.email is string
+        && request.resource.data.phone is string
+        && request.resource.data.type in ['rotarian', 'rotaractor', 'non_rotaractor']
+        && request.resource.data.club is string
+        && request.resource.data.visitCount == 1
+        && request.resource.data.lastVisitedOn is timestamp
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp;
     }
 
     match /admins/{adminId} {
@@ -101,9 +187,21 @@ service cloud.firestore {
       );
     }
 
+    match /clubs/{clubId} {
+      allow read: if isViewerLike() && (
+        isSuperAdmin() ||
+        clubId == adminData().clubId
+      );
+
+      allow create, update: if isClubAdminLike() && (
+        isSuperAdmin() ||
+        clubId == adminData().clubId
+      );
+      allow delete: if false;
+    }
+
     match /members/{memberId} {
-      // Public read is required for member self-check-in search flow.
-      allow read: if true;
+      allow read: if isViewerLike() && canManageClub(resource.data.clubId);
       allow create: if isClubAdminLike()
         && canManageClub(request.resource.data.clubId)
         && request.resource.data.clubId is string
@@ -114,9 +212,15 @@ service cloud.firestore {
       allow delete: if isClubAdminLike() && canManageClub(resource.data.clubId);
     }
 
+    match /memberPublicDirectory/{memberId} {
+      allow read: if resource.data.isActive == true;
+      allow create, update: if isClubAdminLike() && canManageClub(request.resource.data.clubId);
+      allow delete: if isClubAdminLike() && canManageClub(resource.data.clubId);
+    }
+
     match /events/{eventId} {
-      // Public read is required for scanner/check-in event resolution.
-      allow read: if true;
+      // Public read is required for scanner/check-in event resolution, but only for active events.
+      allow read: if isViewerLike() && canManageClub(resource.data.clubId) || resource.data.isActive == true;
       allow create: if isEventManagerLike()
         && canManageClub(request.resource.data.clubId)
         && request.resource.data.clubId is string
@@ -137,12 +241,15 @@ service cloud.firestore {
     match /guests/{guestId} {
       allow read: if isViewerLike() && canManageClub(resource.data.clubId);
 
-      // Public create for check-in flow. Club must be provided.
-      allow create: if request.resource.data.clubId is string && request.resource.data.clubId.size() > 0;
+      // Public create for check-in flow, but only with validated guest payload bound to an active club.
+      allow create: if validPublicGuestCreate();
 
       function isGuestCheckInUpdate() {
         return request.auth == null
           && request.resource.data.clubId == resource.data.clubId
+          && request.resource.data.clubName == resource.data.clubName
+          && request.resource.data.clubType == resource.data.clubType
+          && request.resource.data.clubCode == resource.data.clubCode
           && request.resource.data.name == resource.data.name
           && request.resource.data.email == resource.data.email
           && request.resource.data.phone == resource.data.phone

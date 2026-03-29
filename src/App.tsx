@@ -21,6 +21,10 @@ const SuperAdminPage = React.lazy(() => import('@pages/SuperAdminPage'));
 const EventAnalyticsPage = React.lazy(() => import('@pages/EventAnalyticsPage'));
 const AttendanceListPage = React.lazy(() => import('@pages/AttendanceListPage'));
 const ClubAnalyticsPage = React.lazy(() => import('@pages/ClubAnalyticsPage'));
+const SystemAnalyticsPage = React.lazy(() => import('@pages/SystemAnalyticsPage'));
+const SettingsPage = React.lazy(() => import('@pages/SettingsPage'));
+const HelpCenterPage = React.lazy(() => import('@pages/HelpCenterPage'));
+const EditEventPage = React.lazy(() => import('@pages/EditEventPage'));
 
 function App() {
   const withSuspense = (node: React.ReactNode) => (
@@ -92,6 +96,15 @@ function App() {
           />
 
           <Route
+            path="/events/:eventId/edit"
+            element={
+              <ProtectedRoute allowedRoles={['super_admin', 'club_admin', 'event_manager']}>
+                {withSuspense(<EditEventPage />)}
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
             path="/events/:eventId/qrcode"
             element={
               <ProtectedRoute allowedRoles={['super_admin', 'club_admin', 'event_manager', 'viewer']}>
@@ -146,6 +159,33 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['super_admin', 'club_admin', 'event_manager', 'viewer']}>
                 {withSuspense(<ClubAnalyticsPage />)}
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/analytics/system"
+            element={
+              <ProtectedRoute allowedRoles={['super_admin']}>
+                {withSuspense(<SystemAnalyticsPage />)}
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/settings"
+            element={
+              <ProtectedRoute>
+                {withSuspense(<SettingsPage />)}
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/help"
+            element={
+              <ProtectedRoute>
+                {withSuspense(<HelpCenterPage />)}
               </ProtectedRoute>
             }
           />

@@ -10,6 +10,9 @@ import {
 import { deleteApp, initializeApp } from 'firebase/app';
 import { collection, doc, getDoc, getDocs, limit, query, setDoc, Timestamp, where } from 'firebase/firestore';
 import { firebaseConfig } from '../../config/firebase-config';
+import { ClubType } from '../../types/club';
+import { buildClubId, normalizeClubCode, normalizeClubName } from './club-utils';
+import { clubService } from './club-service';
 import { auth, db } from './firebase';
 
 export interface Admin {
@@ -18,6 +21,8 @@ export interface Admin {
   name: string;
   clubId: string;
   clubName: string;
+  clubType?: ClubType;
+  clubCode?: string;
   role: 'super_admin' | 'club_admin' | 'event_manager' | 'viewer';
   createdAt: Date;
   lastLogin?: Date;
@@ -32,14 +37,21 @@ class AuthService {
     email: string;
     password: string;
     name: string;
+    clubId?: string;
     clubName: string;
+    clubType: ClubType;
+    clubCode?: string;
     role?: 'super_admin' | 'club_admin' | 'event_manager' | 'viewer';
     sendInviteEmail?: boolean;
   }): Promise<Admin> {
     const role = input.role || 'club_admin';
-    const normalizedClubName = input.clubName.trim();
-    const clubId = this.toClubId(normalizedClubName);
-    await this.assertClubAdminCapacity(clubId);
+    const club = await clubService.ensureClub({
+      clubId: input.clubId,
+      clubName: input.clubName,
+      clubType: input.clubType,
+      clubCode: input.clubCode,
+    });
+    await this.assertClubAdminCapacity(club.clubId);
 
     // Create auth user in an isolated Firebase app so the current super admin session is preserved.
     const secondaryApp = initializeApp(firebaseConfig, `secondary-${Date.now()}`);
@@ -56,8 +68,10 @@ class AuthService {
         id: userCredential.user.uid,
         email: input.email.toLowerCase().trim(),
         name: input.name,
-        clubId,
-        clubName: normalizedClubName,
+        clubId: club.clubId,
+        clubName: club.clubName,
+        clubType: club.clubType,
+        clubCode: club.clubCode,
         role,
         createdAt: new Date(),
         isActive: true,
@@ -92,12 +106,17 @@ class AuthService {
     password: string,
     name: string,
     role: 'super_admin' | 'club_admin' | 'event_manager' | 'viewer' = 'club_admin',
-    clubName = 'Default Club'
+    clubName = 'Default Club',
+    clubType: ClubType = 'rotaract',
+    clubCode?: string
   ): Promise<Admin> {
     try {
-      const normalizedClubName = clubName.trim() || 'Default Club';
-      const clubId = this.toClubId(normalizedClubName);
-      await this.assertClubAdminCapacity(clubId);
+      const club = await clubService.ensureClub({
+        clubName,
+        clubType,
+        clubCode,
+      });
+      await this.assertClubAdminCapacity(club.clubId);
 
       // Create Firebase user
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -108,8 +127,10 @@ class AuthService {
         id: user.uid,
         email: email.toLowerCase().trim(),
         name,
-        clubId,
-        clubName: normalizedClubName,
+        clubId: club.clubId,
+        clubName: club.clubName,
+        clubType: club.clubType,
+        clubCode: club.clubCode,
         role,
         createdAt: new Date(),
         isActive: true,
@@ -143,7 +164,7 @@ class AuthService {
       }
 
       const adminData = adminDoc.data() as Admin;
-      const normalized = this.normalizeAdmin(adminData, user.uid);
+      const normalized = await this.normalizeAdmin(adminData, user.uid);
 
       // Check if admin is active
       if (!normalized.isActive) {
@@ -158,6 +179,8 @@ class AuthService {
           lastLogin: Timestamp.now(),
           clubId: normalized.clubId,
           clubName: normalized.clubName,
+          clubType: normalized.clubType || null,
+          clubCode: normalized.clubCode || null,
           inviteStatus: normalized.inviteStatus === 'pending' ? 'accepted' : normalized.inviteStatus || 'accepted',
         },
         { merge: true }
@@ -183,11 +206,16 @@ class AuthService {
         try {
           const adminDoc = await getDoc(doc(db, 'admins', user.uid));
           if (adminDoc.exists()) {
-            const normalized = this.normalizeAdmin(adminDoc.data() as Admin, user.uid);
+            const normalized = await this.normalizeAdmin(adminDoc.data() as Admin, user.uid);
             // Backfill club metadata for legacy admins
             await setDoc(
               doc(db, 'admins', user.uid),
-              { clubId: normalized.clubId, clubName: normalized.clubName },
+              {
+                clubId: normalized.clubId,
+                clubName: normalized.clubName,
+                clubType: normalized.clubType || null,
+                clubCode: normalized.clubCode || null,
+              },
               { merge: true }
             );
             resolve(normalized);
@@ -226,14 +254,6 @@ class AuthService {
     return onAuthStateChanged(auth, callback);
   }
 
-  private toClubId(clubName: string): string {
-    return clubName
-      .toLowerCase()
-      .trim()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)/g, '') || 'default-club';
-  }
-
   private async assertClubAdminCapacity(clubId: string): Promise<void> {
     const snapshot = await getDocs(
       query(
@@ -253,28 +273,56 @@ class AuthService {
     }
   }
 
-  private normalizeAdmin(admin: Admin, userId: string): Admin {
+  private async normalizeAdmin(admin: Admin, userId: string): Promise<Admin> {
     const mappedRole =
       (admin.role as unknown as string) === 'admin'
         ? 'club_admin'
         : (admin.role || 'club_admin');
 
-    if (admin.clubId && admin.clubName) {
-      return {
-        ...admin,
-        role: mappedRole as Admin['role'],
-        email: admin.email?.toLowerCase?.() || '',
-      };
-    }
-
-    const fallbackClubName = admin.clubName || `${admin.name || 'Admin'} Club`;
-    return {
+    const fallbackClubName = normalizeClubName(admin.clubName || `${admin.name || 'Admin'} Club`);
+    const fallbackClubType: ClubType = admin.clubType === 'rotary' ? 'rotary' : 'rotaract';
+    const fallbackAdmin: Admin = {
       ...admin,
-      clubId: admin.clubId || `club-${userId}`,
+      clubId: admin.clubId || buildClubId(fallbackClubName || `club-${userId}`, fallbackClubType),
       clubName: fallbackClubName,
+      clubType: fallbackClubType,
+      clubCode: normalizeClubCode(admin.clubCode) || undefined,
       role: mappedRole as Admin['role'],
       email: admin.email?.toLowerCase?.() || '',
     };
+
+    try {
+      if (admin.clubId) {
+        const club = await clubService.getClubById(admin.clubId);
+        if (club) {
+          return {
+            ...fallbackAdmin,
+            clubId: club.clubId,
+            clubName: club.clubName,
+            clubType: club.clubType,
+            clubCode: club.clubCode,
+          };
+        }
+      }
+
+      const ensuredClub = await clubService.ensureClub({
+        clubId: fallbackAdmin.clubId,
+        clubName: fallbackAdmin.clubName,
+        clubType: fallbackAdmin.clubType || 'rotaract',
+        clubCode: fallbackAdmin.clubCode,
+      });
+
+      return {
+        ...fallbackAdmin,
+        clubId: ensuredClub.clubId,
+        clubName: ensuredClub.clubName,
+        clubType: ensuredClub.clubType,
+        clubCode: ensuredClub.clubCode,
+      };
+    } catch {
+      // Keep login working even if club metadata cannot be read or backfilled yet.
+      return fallbackAdmin;
+    }
   }
 }
 

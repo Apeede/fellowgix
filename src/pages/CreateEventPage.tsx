@@ -88,7 +88,9 @@ const CreateEventPage: React.FC = () => {
         formData,
         currentAdmin.id,
         currentAdmin.clubId,
-        currentAdmin.clubName
+        currentAdmin.clubName,
+        currentAdmin.clubType,
+        currentAdmin.clubCode
       );
       toast.success(`Event "${event.name}" created successfully!`);
       navigate('/events', { state: { newEventId: event.id } });

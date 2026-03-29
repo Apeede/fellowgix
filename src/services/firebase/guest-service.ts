@@ -36,6 +36,8 @@ class GuestService {
    */
   async checkInGuest(input: CreateGuestInput, clubId: string): Promise<GuestCheckInData> {
     try {
+      const hostClub = await getDoc(doc(db, 'clubs', clubId));
+      const hostClubData = hostClub.exists() ? (hostClub.data() as Record<string, unknown>) : null;
       const normalizedInput: CreateGuestInput = {
         ...input,
         email: normalizeEmail(input.email),
@@ -71,6 +73,9 @@ class GuestService {
       // Create new guest
       const guestData = {
         clubId,
+        clubName: String(hostClubData?.clubName || ''),
+        clubType: hostClubData?.clubType === 'rotary' ? 'rotary' : 'rotaract',
+        clubCode: String(hostClubData?.clubCode || '').trim(),
         name: normalizedInput.name,
         email: normalizedInput.email,
         phone: normalizedInput.phone,

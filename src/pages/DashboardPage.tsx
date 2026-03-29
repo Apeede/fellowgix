@@ -1,7 +1,7 @@
 import { useAuth } from '@context/useAuth';
 import { eventService } from '@services/firebase/event-service';
 import { EventStats } from '@types/event';
-import { BarChart3, Calendar, LogOut, Plus, ShieldCheck, TrendingUp, UserCheck, Users } from 'lucide-react';
+import { BarChart3, Calendar, LifeBuoy, LogOut, Plus, Settings, ShieldCheck, TrendingUp, UserCheck, Users } from 'lucide-react';
 import React, { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
@@ -325,6 +325,34 @@ const DashboardPage: React.FC = () => {
               </div>
             </button>
 
+            <button
+              type="button"
+              onClick={() => navigate('/settings')}
+              className="p-4 border-2 border-gray-200 rounded-lg hover:border-primary-600 hover:bg-primary-50 transition-all text-left"
+            >
+              <div className="flex items-center gap-3">
+                <Settings className="w-5 h-5 text-primary-600" />
+                <div>
+                  <p className="font-medium text-gray-900">Settings</p>
+                  <p className="text-sm text-gray-600">Manage account and security</p>
+                </div>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => navigate('/help')}
+              className="p-4 border-2 border-gray-200 rounded-lg hover:border-primary-600 hover:bg-primary-50 transition-all text-left"
+            >
+              <div className="flex items-center gap-3">
+                <LifeBuoy className="w-5 h-5 text-primary-600" />
+                <div>
+                  <p className="font-medium text-gray-900">Help Center</p>
+                  <p className="text-sm text-gray-600">Guides and support checklist</p>
+                </div>
+              </div>
+            </button>
+
             {currentAdmin?.role === 'super_admin' && (
               <button
                 type="button"
@@ -336,6 +364,22 @@ const DashboardPage: React.FC = () => {
                   <div>
                     <p className="font-medium text-gray-900">Super Admin</p>
                     <p className="text-sm text-gray-600">Create admins for clubs</p>
+                  </div>
+                </div>
+              </button>
+            )}
+
+            {currentAdmin?.role === 'super_admin' && (
+              <button
+                type="button"
+                onClick={() => navigate('/analytics/system')}
+                className="p-4 border-2 border-gray-200 rounded-lg hover:border-primary-600 hover:bg-primary-50 transition-all text-left"
+              >
+                <div className="flex items-center gap-3">
+                  <BarChart3 className="w-5 h-5 text-primary-600" />
+                  <div>
+                    <p className="font-medium text-gray-900">System Analytics</p>
+                    <p className="text-sm text-gray-600">Compare Rotary and Rotaract performance</p>
                   </div>
                 </div>
               </button>

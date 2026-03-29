@@ -4,11 +4,12 @@ import {
     doc,
     getDoc,
     getDocs,
-    orderBy,
     query,
     Timestamp,
     where,
 } from 'firebase/firestore';
+
+export type RepresentedClubType = 'rotary' | 'rotaract' | 'member' | 'unknown';
 
 export interface AttendanceAnalytics {
   totalAttendees: number;
@@ -20,7 +21,8 @@ export interface AttendanceAnalytics {
   attendanceRate: number;
   checkInByHour: Record<number, number>;
   checkInByDay: Record<string, number>;
-  clubComparison: Array<{ club: string; count: number }>;
+  clubComparison: Array<{ club: string; count: number; clubType: RepresentedClubType }>;
+  clubTypeBreakdown: Record<RepresentedClubType, number>;
   guestTypeBreakdown: {
     rotarian: number;
     rotaractor: number;
@@ -43,6 +45,7 @@ export interface AttendanceListItem {
   type: 'member' | 'guest';
   checkedInAt: Date;
   club?: string;
+  clubType?: RepresentedClubType;
   isDuplicate: boolean;
 }
 
@@ -55,6 +58,9 @@ export interface ClubEventAnalyticsRow {
   memberCount: number;
   guestCount: number;
   attendanceRate: number;
+  rotaryGuestCount: number;
+  rotaractGuestCount: number;
+  nonRotarianGuestCount: number;
 }
 
 export interface ClubAnalyticsSummary {
@@ -66,12 +72,55 @@ export interface ClubAnalyticsSummary {
   memberCount: number;
   guestCount: number;
   returningGuestCount: number;
+  clubTypeBreakdown: Record<RepresentedClubType, number>;
+  guestTypeBreakdown: {
+    rotarian: number;
+    rotaractor: number;
+    non_rotaractor: number;
+  };
+  clubComparison: Array<{ club: string; count: number; clubType: RepresentedClubType }>;
   avgAttendancePerEvent: number;
   attendanceByDay: Array<{ day: string; count: number }>;
   eventRows: ClubEventAnalyticsRow[];
 }
 
+export interface SystemClubAnalyticsRow {
+  clubId: string;
+  clubName: string;
+  clubType: 'rotary' | 'rotaract';
+  clubCode?: string;
+  adminCount: number;
+  eventCount: number;
+  totalAttendance: number;
+  uniqueAttendees: number;
+  avgAttendancePerEvent: number;
+}
+
+export interface SystemTypeAnalyticsRow {
+  clubType: 'rotary' | 'rotaract';
+  clubCount: number;
+  adminCount: number;
+  eventCount: number;
+  totalAttendance: number;
+  uniqueAttendees: number;
+  avgAttendancePerEvent: number;
+}
+
+export interface SystemAnalyticsSummary {
+  totalClubs: number;
+  totalAdmins: number;
+  totalEvents: number;
+  totalAttendance: number;
+  performanceByType: SystemTypeAnalyticsRow[];
+  clubRows: SystemClubAnalyticsRow[];
+}
+
 export class AnalyticsService {
+  private static getRepresentedClubTypeForGuest(guestType: string): RepresentedClubType {
+    if (guestType === 'rotarian') return 'rotary';
+    if (guestType === 'rotaractor') return 'rotaract';
+    return 'unknown';
+  }
   /**
    * Get comprehensive attendance analytics for an event
    */
@@ -133,16 +182,22 @@ export class AnalyticsService {
         rotaractor: 0,
         non_rotaractor: 0,
       };
+      const clubTypeBreakdown: Record<RepresentedClubType, number> = {
+        rotary: 0,
+        rotaract: 0,
+        member: 0,
+        unknown: 0,
+      };
 
       const rotaryClubs = new Set<string>();
       const rotaractClubs = new Set<string>();
       const memberClubs = new Set<string>();
       const allClubs = new Set<string>();
       const attendeeDetails: AttendanceListItem[] = [];
-      const clubCountMap = new Map<string, number>();
+      const clubCountMap = new Map<string, { count: number; clubType: RepresentedClubType }>();
 
-      const guestCache = new Map<string, any>();
-      const memberCache = new Map<string, any>();
+      const guestCache = new Map<string, Record<string, unknown> | null>();
+      const memberCache = new Map<string, Record<string, unknown> | null>();
 
       // Build enriched attendee details and club analytics
       for (const record of records) {
@@ -154,6 +209,7 @@ export class AnalyticsService {
             : new Date(record.checkedInAt);
 
         let club = record.club || '';
+        let representedClubType: RepresentedClubType = 'unknown';
 
         if (record.type === 'guest' && record.personId) {
           if (!guestCache.has(record.personId)) {
@@ -172,14 +228,20 @@ export class AnalyticsService {
             | 'non_rotaractor';
           const guestClub = (guestData?.club || club || '').trim();
           club = guestClub;
+          representedClubType = this.getRepresentedClubTypeForGuest(guestType);
 
           guestTypeBreakdown[guestType]++;
+          clubTypeBreakdown[representedClubType] += 1;
 
           if (guestClub) {
             allClubs.add(guestClub);
             if (guestType === 'rotarian') rotaryClubs.add(guestClub);
             if (guestType === 'rotaractor') rotaractClubs.add(guestClub);
-            clubCountMap.set(guestClub, (clubCountMap.get(guestClub) || 0) + 1);
+            const existing = clubCountMap.get(guestClub);
+            clubCountMap.set(guestClub, {
+              count: (existing?.count || 0) + 1,
+              clubType: representedClubType,
+            });
           }
         }
 
@@ -196,11 +258,17 @@ export class AnalyticsService {
           const memberData = memberCache.get(record.personId);
           const memberClub = (memberData?.club || club || '').trim();
           club = memberClub;
+          representedClubType = 'member';
+          clubTypeBreakdown.member += 1;
 
           if (memberClub) {
             memberClubs.add(memberClub);
             allClubs.add(memberClub);
-            clubCountMap.set(memberClub, (clubCountMap.get(memberClub) || 0) + 1);
+            const existing = clubCountMap.get(memberClub);
+            clubCountMap.set(memberClub, {
+              count: (existing?.count || 0) + 1,
+              clubType: 'member',
+            });
           }
         }
 
@@ -212,6 +280,7 @@ export class AnalyticsService {
           type: record.type,
           checkedInAt,
           club,
+          clubType: representedClubType,
           isDuplicate: record.isDuplicate || false,
         });
       }
@@ -227,8 +296,9 @@ export class AnalyticsService {
         checkInByHour,
         checkInByDay,
         clubComparison: Array.from(clubCountMap.entries())
-          .map(([club, count]) => ({ club, count }))
-          .sort((a, b) => b.count - a.count),
+          .map(([club, value]) => ({ club, count: value.count, clubType: value.clubType }))
+          .sort((a, b) => b.count - a.count || a.club.localeCompare(b.club)),
+        clubTypeBreakdown,
         guestTypeBreakdown,
         clubsVisited: {
           rotary: Array.from(rotaryClubs).sort(),
@@ -251,30 +321,8 @@ export class AnalyticsService {
    */
   static async getEventAttendanceList(eventId: string): Promise<AttendanceListItem[]> {
     try {
-      const attendanceQuery = query(
-        collection(db, 'attendance'),
-        where('eventId', '==', eventId),
-        orderBy('checkedInAt', 'desc')
-      );
-
-      const snapshot = await getDocs(attendanceQuery);
-      const attendees: AttendanceListItem[] = snapshot.docs.map((doc) => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          personName: data.personName,
-          email: data.personEmail || data.email || '',
-          phone: data.personPhone || data.phone || '',
-          type: data.type,
-          checkedInAt: data.checkedInAt instanceof Timestamp 
-            ? data.checkedInAt.toDate() 
-            : new Date(data.checkedInAt),
-          club: data.club,
-          isDuplicate: data.isDuplicate || false,
-        };
-      });
-
-      return attendees;
+      const analytics = await this.getEventAnalytics(eventId);
+      return analytics.attendeeDetails;
     } catch (error) {
       console.error('Failed to get attendance list:', error);
       throw error;
@@ -292,7 +340,7 @@ export class AnalyticsService {
       const attendees = await this.getEventAttendanceList(eventId);
 
       // Build CSV header
-      const headers = ['Name', 'Email', 'Phone', 'Type', 'Check-in Time', 'Club', 'Status'];
+      const headers = ['Name', 'Email', 'Phone', 'Type', 'Check-in Time', 'Club', 'Club Type', 'Status'];
       const csvContent = [
         headers.join(','),
         ...attendees.map((attendee) =>
@@ -303,6 +351,7 @@ export class AnalyticsService {
             attendee.type.toUpperCase(),
             attendee.checkedInAt.toLocaleString('en-US'),
             `"${attendee.club || '-'}"`,
+            (attendee.clubType || 'unknown').toUpperCase(),
             attendee.isDuplicate ? 'Duplicate' : 'Valid',
           ].join(',')
         ),
@@ -323,6 +372,12 @@ export class AnalyticsService {
         `Rotarians,${analytics.guestTypeBreakdown.rotarian}`,
         `Rotaractors,${analytics.guestTypeBreakdown.rotaractor}`,
         `Non-Rotaractors,${analytics.guestTypeBreakdown.non_rotaractor}`,
+        '',
+        'REPRESENTED CLUB TYPES',
+        `Rotary,${analytics.clubTypeBreakdown.rotary}`,
+        `Rotaract,${analytics.clubTypeBreakdown.rotaract}`,
+        `Member Clubs,${analytics.clubTypeBreakdown.member}`,
+        `Unknown,${analytics.clubTypeBreakdown.unknown}`,
       ].join('\n');
 
       const fullCSV = csvContent + '\n' + summary;
@@ -349,7 +404,7 @@ export class AnalyticsService {
     const rows = attendees
       .map(
         (attendee) =>
-          `<tr><td>${attendee.personName}</td><td>${attendee.email}</td><td>${attendee.phone}</td><td>${attendee.type}</td><td>${attendee.club || '-'}</td><td>${attendee.checkedInAt.toLocaleString()}</td></tr>`
+          `<tr><td>${attendee.personName}</td><td>${attendee.email}</td><td>${attendee.phone}</td><td>${attendee.type}</td><td>${attendee.club || '-'}</td><td>${attendee.clubType || 'unknown'}</td><td>${attendee.checkedInAt.toLocaleString()}</td></tr>`
       )
       .join('');
 
@@ -381,7 +436,7 @@ export class AnalyticsService {
           <h2>Attendee Details</h2>
           <table>
             <thead>
-              <tr><th>Name</th><th>Email</th><th>Phone</th><th>Type</th><th>Club</th><th>Checked In</th></tr>
+              <tr><th>Name</th><th>Email</th><th>Phone</th><th>Type</th><th>Club</th><th>Club Type</th><th>Checked In</th></tr>
             </thead>
             <tbody>${rows}</tbody>
           </table>
@@ -425,13 +480,38 @@ export class AnalyticsService {
     });
 
     const dayMap = new Map<string, number>();
-    const eventStats = new Map<string, { total: number; members: number; guests: number; unique: Set<string> }>();
+    const eventStats = new Map<
+      string,
+      {
+        total: number;
+        members: number;
+        guests: number;
+        rotaryGuests: number;
+        rotaractGuests: number;
+        nonRotarianGuests: number;
+        unique: Set<string>;
+      }
+    >();
+    const clubCountMap = new Map<string, { count: number; clubType: RepresentedClubType }>();
     const uniqueGlobal = new Set<string>();
     let memberCount = 0;
     let guestCount = 0;
     let returningGuestCount = 0;
+    const clubTypeBreakdown: Record<RepresentedClubType, number> = {
+      rotary: 0,
+      rotaract: 0,
+      member: 0,
+      unknown: 0,
+    };
+    const guestTypeBreakdown = {
+      rotarian: 0,
+      rotaractor: 0,
+      non_rotaractor: 0,
+    };
+    const guestCache = new Map<string, Record<string, unknown> | null>();
+    const memberCache = new Map<string, Record<string, unknown> | null>();
 
-    attendance.forEach((record) => {
+    for (const record of attendance) {
       const eventId = String(record.eventId || '');
       const type = String(record.type || '');
       const personId = String(record.personId || '');
@@ -444,7 +524,15 @@ export class AnalyticsService {
       }
 
       if (!eventStats.has(eventId)) {
-        eventStats.set(eventId, { total: 0, members: 0, guests: 0, unique: new Set<string>() });
+        eventStats.set(eventId, {
+          total: 0,
+          members: 0,
+          guests: 0,
+          rotaryGuests: 0,
+          rotaractGuests: 0,
+          nonRotarianGuests: 0,
+          unique: new Set<string>(),
+        });
       }
       const row = eventStats.get(eventId)!;
       row.total += 1;
@@ -453,21 +541,85 @@ export class AnalyticsService {
       if (type === 'member') {
         row.members += 1;
         memberCount += 1;
+        clubTypeBreakdown.member += 1;
+
+        if (personId) {
+          if (!memberCache.has(personId)) {
+            try {
+              const memberDoc = await getDoc(doc(db, 'members', personId));
+              memberCache.set(personId, memberDoc.exists() ? (memberDoc.data() as Record<string, unknown>) : null);
+            } catch {
+              memberCache.set(personId, null);
+            }
+          }
+
+          const memberData = memberCache.get(personId);
+          const memberClub = String(memberData?.clubName || memberData?.club || '').trim();
+          if (memberClub) {
+            const existing = clubCountMap.get(memberClub);
+            clubCountMap.set(memberClub, {
+              count: (existing?.count || 0) + 1,
+              clubType: 'member',
+            });
+          }
+        }
       } else if (type === 'guest') {
         row.guests += 1;
         guestCount += 1;
+
+        if (personId) {
+          if (!guestCache.has(personId)) {
+            try {
+              const guestDoc = await getDoc(doc(db, 'guests', personId));
+              guestCache.set(personId, guestDoc.exists() ? (guestDoc.data() as Record<string, unknown>) : null);
+            } catch {
+              guestCache.set(personId, null);
+            }
+          }
+
+          const guestData = guestCache.get(personId);
+          const guestType = String(guestData?.type || 'non_rotaractor') as 'rotarian' | 'rotaractor' | 'non_rotaractor';
+          const representedClubType = this.getRepresentedClubTypeForGuest(guestType);
+          guestTypeBreakdown[guestType] += 1;
+          clubTypeBreakdown[representedClubType] += 1;
+
+          if (guestType === 'rotarian') row.rotaryGuests += 1;
+          if (guestType === 'rotaractor') row.rotaractGuests += 1;
+          if (guestType === 'non_rotaractor') row.nonRotarianGuests += 1;
+
+          const guestClub = String(guestData?.club || '').trim();
+          if (guestClub) {
+            const existing = clubCountMap.get(guestClub);
+            clubCountMap.set(guestClub, {
+              count: (existing?.count || 0) + 1,
+              clubType: representedClubType,
+            });
+          }
+        } else {
+          guestTypeBreakdown.non_rotaractor += 1;
+          clubTypeBreakdown.unknown += 1;
+          row.nonRotarianGuests += 1;
+        }
       }
       if (record.isReturningGuest) {
         returningGuestCount += 1;
       }
 
       uniqueGlobal.add(`${type}:${personId}`);
-    });
+    }
 
     const eventRows: ClubEventAnalyticsRow[] = Array.from(eventMap.values())
       .map((event) => {
         const eventId = String(event.id);
-        const stats = eventStats.get(eventId) || { total: 0, members: 0, guests: 0, unique: new Set<string>() };
+        const stats = eventStats.get(eventId) || {
+          total: 0,
+          members: 0,
+          guests: 0,
+          rotaryGuests: 0,
+          rotaractGuests: 0,
+          nonRotarianGuests: 0,
+          unique: new Set<string>(),
+        };
         const expectedAttendance = Number(event.expectedAttendance || 0);
         const attendanceRate = expectedAttendance > 0 ? Math.min(100, (stats.unique.size / expectedAttendance) * 100) : 0;
         return {
@@ -479,6 +631,9 @@ export class AnalyticsService {
           memberCount: stats.members,
           guestCount: stats.guests,
           attendanceRate,
+          rotaryGuestCount: stats.rotaryGuests,
+          rotaractGuestCount: stats.rotaractGuests,
+          nonRotarianGuestCount: stats.nonRotarianGuests,
         };
       })
       .sort((a, b) => (a.eventDate < b.eventDate ? 1 : -1));
@@ -492,6 +647,11 @@ export class AnalyticsService {
       memberCount,
       guestCount,
       returningGuestCount,
+      clubTypeBreakdown,
+      guestTypeBreakdown,
+      clubComparison: Array.from(clubCountMap.entries())
+        .map(([club, value]) => ({ club, count: value.count, clubType: value.clubType }))
+        .sort((a, b) => b.count - a.count || a.club.localeCompare(b.club)),
       avgAttendancePerEvent: events.length > 0 ? attendance.length / events.length : 0,
       attendanceByDay: Array.from(dayMap.entries())
         .map(([day, count]) => ({ day, count }))
@@ -508,6 +668,9 @@ export class AnalyticsService {
       'Unique Attendees',
       'Members',
       'Guests',
+      'Rotary Guests',
+      'Rotaract Guests',
+      'Other Guests',
       'Attendance Rate %',
     ];
     const rows = analytics.eventRows.map((row) => [
@@ -517,6 +680,9 @@ export class AnalyticsService {
       row.uniqueAttendees,
       row.memberCount,
       row.guestCount,
+      row.rotaryGuestCount,
+      row.rotaractGuestCount,
+      row.nonRotarianGuestCount,
       row.attendanceRate.toFixed(1),
     ]);
     const csv = [
@@ -526,6 +692,10 @@ export class AnalyticsService {
       `Unique Attendees,${analytics.uniqueAttendees}`,
       `Members,${analytics.memberCount}`,
       `Guests,${analytics.guestCount}`,
+      `Rotary Representation,${analytics.clubTypeBreakdown.rotary}`,
+      `Rotaract Representation,${analytics.clubTypeBreakdown.rotaract}`,
+      `Member Club Representation,${analytics.clubTypeBreakdown.member}`,
+      `Unknown Representation,${analytics.clubTypeBreakdown.unknown}`,
       '',
       header.join(','),
       ...rows.map((row) => row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(',')),
@@ -537,5 +707,137 @@ export class AnalyticsService {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  }
+
+  static async getSystemAnalytics(
+    options?: { from?: Date; to?: Date }
+  ): Promise<SystemAnalyticsSummary> {
+    const [clubsSnapshot, adminsSnapshot, eventsSnapshot, attendanceSnapshot] = await Promise.all([
+      getDocs(collection(db, 'clubs')),
+      getDocs(collection(db, 'admins')),
+      getDocs(collection(db, 'events')),
+      getDocs(collection(db, 'attendance')),
+    ]);
+
+    const clubMap = new Map<string, SystemClubAnalyticsRow>();
+    clubsSnapshot.docs.forEach((clubDoc) => {
+      const data = clubDoc.data() as Record<string, unknown>;
+      const clubId = String(data.clubId || clubDoc.id);
+      clubMap.set(clubId, {
+        clubId,
+        clubName: String(data.clubName || clubId),
+        clubType: data.clubType === 'rotary' ? 'rotary' : 'rotaract',
+        clubCode: String(data.clubCode || '').trim() || undefined,
+        adminCount: 0,
+        eventCount: 0,
+        totalAttendance: 0,
+        uniqueAttendees: 0,
+        avgAttendancePerEvent: 0,
+      });
+    });
+
+    adminsSnapshot.docs.forEach((adminDoc) => {
+      const data = adminDoc.data() as Record<string, unknown>;
+      const clubId = String(data.clubId || '').trim();
+      if (!clubId) return;
+      const club = clubMap.get(clubId);
+      if (!club) return;
+      club.adminCount += 1;
+    });
+
+    const uniqueByClub = new Map<string, Set<string>>();
+    const allowedEventIds = new Set<string>();
+
+    eventsSnapshot.docs.forEach((eventDoc) => {
+      const data = eventDoc.data() as Record<string, unknown>;
+      const clubId = String(data.clubId || '').trim();
+      const eventDate = new Date(String(data.date || ''));
+      if (!clubId || !clubMap.has(clubId)) return;
+      if (!Number.isNaN(eventDate.getTime())) {
+        if (options?.from && eventDate < options.from) return;
+        if (options?.to && eventDate > options.to) return;
+      }
+      const club = clubMap.get(clubId)!;
+      club.eventCount += 1;
+      allowedEventIds.add(eventDoc.id);
+    });
+
+    attendanceSnapshot.docs.forEach((attendanceDoc) => {
+      const data = attendanceDoc.data() as Record<string, unknown>;
+      const clubId = String(data.clubId || '').trim();
+      const eventId = String(data.eventId || '').trim();
+      if (!clubId || !eventId || !allowedEventIds.has(eventId) || !clubMap.has(clubId)) return;
+
+      const checkedInAt = data.checkedInAt instanceof Timestamp
+        ? data.checkedInAt.toDate()
+        : new Date(String(data.checkedInAt || ''));
+      if (!Number.isNaN(checkedInAt.getTime())) {
+        if (options?.from && checkedInAt < options.from) return;
+        if (options?.to && checkedInAt > options.to) return;
+      }
+
+      const club = clubMap.get(clubId)!;
+      club.totalAttendance += 1;
+      if (!uniqueByClub.has(clubId)) uniqueByClub.set(clubId, new Set<string>());
+      uniqueByClub.get(clubId)!.add(`${String(data.type || '')}:${String(data.personId || '')}`);
+    });
+
+    const clubRows = Array.from(clubMap.values())
+      .map((club) => ({
+        ...club,
+        uniqueAttendees: uniqueByClub.get(club.clubId)?.size || 0,
+        avgAttendancePerEvent: club.eventCount > 0 ? club.totalAttendance / club.eventCount : 0,
+      }))
+      .sort((a, b) => b.totalAttendance - a.totalAttendance || a.clubName.localeCompare(b.clubName));
+
+    const byType = new Map<'rotary' | 'rotaract', SystemTypeAnalyticsRow>([
+      [
+        'rotary',
+        {
+          clubType: 'rotary',
+          clubCount: 0,
+          adminCount: 0,
+          eventCount: 0,
+          totalAttendance: 0,
+          uniqueAttendees: 0,
+          avgAttendancePerEvent: 0,
+        },
+      ],
+      [
+        'rotaract',
+        {
+          clubType: 'rotaract',
+          clubCount: 0,
+          adminCount: 0,
+          eventCount: 0,
+          totalAttendance: 0,
+          uniqueAttendees: 0,
+          avgAttendancePerEvent: 0,
+        },
+      ],
+    ]);
+
+    clubRows.forEach((club) => {
+      const row = byType.get(club.clubType)!;
+      row.clubCount += 1;
+      row.adminCount += club.adminCount;
+      row.eventCount += club.eventCount;
+      row.totalAttendance += club.totalAttendance;
+      row.uniqueAttendees += club.uniqueAttendees;
+    });
+
+    const performanceByType = Array.from(byType.values()).map((row) => ({
+      ...row,
+      avgAttendancePerEvent: row.eventCount > 0 ? row.totalAttendance / row.eventCount : 0,
+    }));
+
+    return {
+      totalClubs: clubRows.length,
+      totalAdmins: adminsSnapshot.size,
+      totalEvents: performanceByType.reduce((sum, row) => sum + row.eventCount, 0),
+      totalAttendance: performanceByType.reduce((sum, row) => sum + row.totalAttendance, 0),
+      performanceByType,
+      clubRows,
+    };
   }
 }

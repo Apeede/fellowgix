@@ -1,4 +1,4 @@
-import { AnalyticsService, AttendanceAnalytics } from '@services/firebase/analytics-service';
+import { AnalyticsService, AttendanceAnalytics, RepresentedClubType } from '@services/firebase/analytics-service';
 import { eventService } from '@services/firebase/event-service';
 import {
     AlertCircle,
@@ -26,6 +26,7 @@ const EventAnalyticsPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
+  const [clubTypeFilter, setClubTypeFilter] = useState<'all' | RepresentedClubType>('all');
 
   const loadData = useCallback(async () => {
     try {
@@ -106,6 +107,14 @@ const EventAnalyticsPage: React.FC = () => {
     hours.length > 0
       ? hours.reduce((max, current) => (current[1] > max[1] ? current : max))[0]
       : null;
+  const filteredAttendees =
+    clubTypeFilter === 'all'
+      ? analytics.attendeeDetails
+      : analytics.attendeeDetails.filter((attendee) => (attendee.clubType || 'unknown') === clubTypeFilter);
+  const filteredClubComparison =
+    clubTypeFilter === 'all'
+      ? analytics.clubComparison
+      : analytics.clubComparison.filter((entry) => entry.clubType === clubTypeFilter);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -331,6 +340,28 @@ const EventAnalyticsPage: React.FC = () => {
               </div>
             </div>
 
+            <div className="card">
+              <h3 className="text-lg font-bold text-gray-900 mb-4">Club Type Mix</h3>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-600">Rotary</span>
+                  <span className="font-bold text-gray-900">{analytics.clubTypeBreakdown.rotary}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-600">Rotaract</span>
+                  <span className="font-bold text-gray-900">{analytics.clubTypeBreakdown.rotaract}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-600">Member Clubs</span>
+                  <span className="font-bold text-gray-900">{analytics.clubTypeBreakdown.member}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-600">Unknown</span>
+                  <span className="font-bold text-gray-900">{analytics.clubTypeBreakdown.unknown}</span>
+                </div>
+              </div>
+            </div>
+
             {/* Peak Hours */}
             <div className="card">
               <h3 className="text-lg font-bold text-gray-900 mb-4">Peak Check-in Time</h3>
@@ -411,7 +442,20 @@ const EventAnalyticsPage: React.FC = () => {
           {/* Attendee Details */}
           <div className="card">
             <h3 className="text-lg font-bold text-gray-900 mb-6">Attendee Details</h3>
-            {analytics.attendeeDetails.length === 0 ? (
+            <div className="mb-4">
+              <select
+                className="input-field max-w-xs"
+                value={clubTypeFilter}
+                onChange={(e) => setClubTypeFilter(e.target.value as 'all' | RepresentedClubType)}
+              >
+                <option value="all">All Club Types</option>
+                <option value="rotary">Rotary</option>
+                <option value="rotaract">Rotaract</option>
+                <option value="member">Member Clubs</option>
+                <option value="unknown">Unknown</option>
+              </select>
+            </div>
+            {filteredAttendees.length === 0 ? (
               <p className="text-sm text-gray-500">No attendee details available yet.</p>
             ) : (
               <div className="overflow-x-auto">
@@ -423,18 +467,20 @@ const EventAnalyticsPage: React.FC = () => {
                       <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Phone</th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Type</th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Club</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Club Type</th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Time</th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {analytics.attendeeDetails.map((attendee) => (
+                    {filteredAttendees.map((attendee) => (
                       <tr key={attendee.id} className="hover:bg-gray-50">
                         <td className="px-4 py-3 text-sm font-medium text-gray-900">{attendee.personName}</td>
                         <td className="px-4 py-3 text-sm text-gray-700">{attendee.email || '-'}</td>
                         <td className="px-4 py-3 text-sm text-gray-700">{attendee.phone || '-'}</td>
                         <td className="px-4 py-3 text-sm capitalize text-gray-700">{attendee.type}</td>
                         <td className="px-4 py-3 text-sm text-gray-700">{attendee.club || '-'}</td>
+                        <td className="px-4 py-3 text-sm uppercase text-gray-600">{attendee.clubType || 'unknown'}</td>
                         <td className="px-4 py-3 text-sm text-gray-700">
                           {attendee.checkedInAt.toLocaleString('en-US')}
                         </td>
@@ -485,13 +531,16 @@ const EventAnalyticsPage: React.FC = () => {
           <div className="card">
             <h3 className="text-lg font-bold text-gray-900 mb-4">Per-Club Attendance Comparison</h3>
             <div className="space-y-2">
-              {analytics.clubComparison.slice(0, 15).map((entry) => (
+              {filteredClubComparison.slice(0, 15).map((entry) => (
                 <div key={entry.club} className="flex items-center justify-between border border-gray-200 rounded-lg p-3">
-                  <p className="text-sm text-gray-900">{entry.club}</p>
+                  <div>
+                    <p className="text-sm text-gray-900">{entry.club}</p>
+                    <p className="text-xs uppercase text-gray-500">{entry.clubType}</p>
+                  </div>
                   <p className="text-sm font-semibold text-gray-900">{entry.count}</p>
                 </div>
               ))}
-              {analytics.clubComparison.length === 0 && (
+              {filteredClubComparison.length === 0 && (
                 <p className="text-sm text-gray-600">No club data captured yet.</p>
               )}
             </div>

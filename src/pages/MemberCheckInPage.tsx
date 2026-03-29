@@ -1,7 +1,7 @@
 import { attendanceService } from '@services/firebase/attendance-service';
 import { eventService } from '@services/firebase/event-service';
 import { memberService } from '@services/firebase/member-service';
-import { Member } from '@types/member';
+import { MemberSearchResult } from '@types/member';
 import { AlertCircle, ArrowLeft, Check, Loader, Search } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
@@ -12,9 +12,9 @@ const MemberCheckInPage: React.FC = () => {
   const navigate = useNavigate();
 
   const [searchTerm, setSearchTerm] = useState('');
-  const [searchResults, setSearchResults] = useState<Member[]>([]);
+  const [searchResults, setSearchResults] = useState<MemberSearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [selectedMember, setSelectedMember] = useState<Member | null>(null);
+  const [selectedMember, setSelectedMember] = useState<MemberSearchResult | null>(null);
   const [isCheckingIn, setIsCheckingIn] = useState(false);
   const [checkInResult, setCheckInResult] = useState<{ success: boolean; isDuplicate: boolean; message: string } | null>(null);
   const [eventClubId, setEventClubId] = useState<string>('');
@@ -56,7 +56,7 @@ const MemberCheckInPage: React.FC = () => {
     }
   };
 
-  const handleSelectMember = (member: Member) => {
+  const handleSelectMember = (member: MemberSearchResult) => {
     setSelectedMember(member);
     setSearchTerm('');
     setSearchResults([]);

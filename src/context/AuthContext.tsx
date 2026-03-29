@@ -1,3 +1,4 @@
+import { ClubType } from '@types/club';
 import { authService } from '@services/firebase/auth-service';
 import { User } from 'firebase/auth';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -43,10 +44,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  const registerAdmin = useCallback(async (email: string, password: string, name: string, clubName?: string) => {
+  const registerAdmin = useCallback(async (email: string, password: string, name: string, clubName?: string, clubType: ClubType = 'rotaract', clubCode?: string) => {
     try {
       setError(null);
-      const admin = await authService.registerAdmin(email, password, name, 'club_admin', clubName);
+      const admin = await authService.registerAdmin(email, password, name, 'club_admin', clubName, clubType, clubCode);
       setCurrentAdmin(admin);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to register';

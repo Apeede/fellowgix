@@ -13,6 +13,22 @@ export const normalizeClubName = (value?: string): string => {
     .join(' ');
 };
 
+export const normalizeClubCode = (value?: string): string =>
+  (value || '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, '')
+    .trim();
+
+export const buildClubSlug = (clubName: string): string =>
+  clubName
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '') || 'default-club';
+
+export const buildClubId = (clubName: string, clubType: 'rotary' | 'rotaract'): string =>
+  `${clubType}-${buildClubSlug(clubName)}`;
+
 export const normalizeGuestType = (value: string): 'rotarian' | 'rotaractor' | 'non_rotaractor' => {
   const normalized = value.toLowerCase().trim();
   if (normalized === 'rotarian') return 'rotarian';

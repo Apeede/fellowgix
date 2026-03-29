@@ -1,11 +1,13 @@
-import { CreateMemberInput, Member, UpdateMemberInput } from '@types/member';
+import { CreateMemberInput, Member, MemberSearchResult, UpdateMemberInput } from '@types/member';
 import {
     addDoc,
     collection,
+    deleteDoc,
     doc,
     getDoc,
     getDocs,
     query,
+    setDoc,
     Timestamp,
     updateDoc,
     where,
@@ -16,6 +18,11 @@ import { firestoreTimestampToDate } from './firestore-utils';
 
 class MemberService {
   private collectionName = 'members';
+  private publicDirectoryCollectionName = 'memberPublicDirectory';
+
+  private normalizeSearchText(value: string): string {
+    return value.trim().toLowerCase();
+  }
 
   /**
    * Convert Firestore member document to Member type
@@ -30,6 +37,48 @@ class MemberService {
     } as Member;
   }
 
+  private async syncPublicDirectoryEntry(member: Member): Promise<void> {
+    const directoryRef = doc(db, this.publicDirectoryCollectionName, member.id);
+
+    if (!member.isActive) {
+      await deleteDoc(directoryRef).catch(() => undefined);
+      return;
+    }
+
+    const nameSearch = this.normalizeSearchText(member.name);
+    const emailSearch = this.normalizeSearchText(member.email);
+    const phoneSearch = normalizePhone(member.phone);
+    const memberIdSearch = this.normalizeSearchText(member.memberId || '');
+
+    await setDoc(directoryRef, {
+      memberId: member.id,
+      clubId: member.clubId,
+      name: member.name,
+      email: member.email,
+      phone: member.phone,
+      directoryMemberId: member.memberId || '',
+      club: member.club || member.clubName || '',
+      nameSearch,
+      emailSearch,
+      phoneSearch,
+      memberIdSearch,
+      isActive: true,
+      updatedAt: Timestamp.now(),
+    });
+  }
+
+  private convertSearchResult(docData: Record<string, unknown>, id: string): MemberSearchResult {
+    return {
+      id: String(docData.memberId || id),
+      clubId: String(docData.clubId || ''),
+      name: String(docData.name || ''),
+      email: String(docData.email || ''),
+      phone: String(docData.phone || ''),
+      memberId: String(docData.directoryMemberId || '').trim() || undefined,
+      club: String(docData.club || '').trim() || undefined,
+    };
+  }
+
   /**
    * Create a new member
    */
@@ -37,7 +86,9 @@ class MemberService {
     try {
       const normalizedEmail = normalizeEmail(input.email);
       const normalizedPhone = normalizePhone(input.phone);
-      const normalizedClubName = normalizeClubName(input.club);
+      const club = await getDoc(doc(db, 'clubs', clubId));
+      const clubData = club.exists() ? (club.data() as Record<string, unknown>) : null;
+      const normalizedClubName = normalizeClubName(String(clubData?.clubName || ''));
 
       const duplicateByEmail = await getDocs(
         query(
@@ -65,6 +116,9 @@ class MemberService {
 
       const memberData = {
         clubId,
+        clubName: normalizedClubName,
+        clubType: clubData?.clubType === 'rotary' ? 'rotary' : 'rotaract',
+        clubCode: String(clubData?.clubCode || '').trim(),
         createdByAdminId,
         name: input.name,
         email: normalizedEmail,
@@ -79,8 +133,10 @@ class MemberService {
 
       const docRef = await addDoc(collection(db, this.collectionName), memberData);
 
-      // Return with converted dates
-      return this.convertMemberDoc(memberData, docRef.id);
+      const createdMember = this.convertMemberDoc(memberData, docRef.id);
+      await this.syncPublicDirectoryEntry(createdMember);
+
+      return createdMember;
     } catch (error) {
       throw new Error(`Failed to create member: ${(error instanceof Error ? error.message : String(error))}`);
     }
@@ -89,32 +145,54 @@ class MemberService {
   /**
    * Search members by name or email
    */
-  async searchMembers(searchTerm: string, clubId: string): Promise<Member[]> {
+  async searchMembers(searchTerm: string, clubId: string): Promise<MemberSearchResult[]> {
     try {
-      // Search by email (exact or partial)
+      const normalizedTerm = this.normalizeSearchText(searchTerm);
+      const normalizedPhoneTerm = normalizePhone(searchTerm);
       const constraints = [
         where('clubId', '==', clubId),
-        where('email', '>=', searchTerm),
-        where('email', '<=', searchTerm + '\uf8ff'),
+        where('emailSearch', '>=', normalizedTerm),
+        where('emailSearch', '<=', normalizedTerm + '\uf8ff'),
       ];
 
-      const q = query(collection(db, this.collectionName), ...constraints);
+      const q = query(collection(db, this.publicDirectoryCollectionName), ...constraints);
       const querySnapshot = await getDocs(q);
 
-      const results = querySnapshot.docs.map((doc) => this.convertMemberDoc(doc.data(), doc.id));
+      const results = querySnapshot.docs.map((item) => this.convertSearchResult(item.data() as Record<string, unknown>, item.id));
 
-      // Also search by name (case-insensitive)
+      // Also search by name and member ID.
       const nameQuery = query(
-        collection(db, this.collectionName),
+        collection(db, this.publicDirectoryCollectionName),
         where('clubId', '==', clubId),
-        where('name', '>=', searchTerm),
-        where('name', '<=', searchTerm + '\uf8ff')
+        where('nameSearch', '>=', normalizedTerm),
+        where('nameSearch', '<=', normalizedTerm + '\uf8ff')
       );
       const nameSnapshot = await getDocs(nameQuery);
-      const nameResults = nameSnapshot.docs.map((doc) => this.convertMemberDoc(doc.data(), doc.id));
+      const nameResults = nameSnapshot.docs.map((item) => this.convertSearchResult(item.data() as Record<string, unknown>, item.id));
+
+      const memberIdQuery = query(
+        collection(db, this.publicDirectoryCollectionName),
+        where('clubId', '==', clubId),
+        where('memberIdSearch', '>=', normalizedTerm),
+        where('memberIdSearch', '<=', normalizedTerm + '\uf8ff')
+      );
+      const memberIdSnapshot = await getDocs(memberIdQuery);
+      const memberIdResults = memberIdSnapshot.docs.map((item) => this.convertSearchResult(item.data() as Record<string, unknown>, item.id));
+
+      let phoneResults: MemberSearchResult[] = [];
+      if (normalizedPhoneTerm) {
+        const phoneQuery = query(
+          collection(db, this.publicDirectoryCollectionName),
+          where('clubId', '==', clubId),
+          where('phoneSearch', '>=', normalizedPhoneTerm),
+          where('phoneSearch', '<=', normalizedPhoneTerm + '\uf8ff')
+        );
+        const phoneSnapshot = await getDocs(phoneQuery);
+        phoneResults = phoneSnapshot.docs.map((item) => this.convertSearchResult(item.data() as Record<string, unknown>, item.id));
+      }
 
       // Combine and deduplicate
-      const combined = [...results, ...nameResults];
+      const combined = [...results, ...nameResults, ...memberIdResults, ...phoneResults];
       const unique = Array.from(new Map(combined.map((item) => [item.id, item])).values());
 
       return unique;
@@ -166,10 +244,26 @@ class MemberService {
   async updateMember(memberId: string, input: UpdateMemberInput): Promise<void> {
     try {
       const docRef = doc(db, this.collectionName, memberId);
+      const existingDoc = await getDoc(docRef);
+      if (!existingDoc.exists()) {
+        throw new Error('Member not found');
+      }
+
       await updateDoc(docRef, {
         ...input,
         updatedAt: Timestamp.now(),
       });
+
+      const existingData = this.convertMemberDoc(existingDoc.data(), existingDoc.id);
+      const updatedMember: Member = {
+        ...existingData,
+        ...input,
+        email: input.email ? normalizeEmail(input.email) : existingData.email,
+        phone: input.phone ? normalizePhone(input.phone) : existingData.phone,
+        updatedAt: new Date(),
+      };
+
+      await this.syncPublicDirectoryEntry(updatedMember);
     } catch (error) {
       throw new Error(`Failed to update member: ${(error instanceof Error ? error.message : String(error))}`);
     }
@@ -191,6 +285,10 @@ class MemberService {
     } catch (error) {
       throw new Error(`Failed to get members: ${(error instanceof Error ? error.message : String(error))}`);
     }
+  }
+
+  async syncPublicDirectoryForMembers(members: Member[]): Promise<void> {
+    await Promise.all(members.map((member) => this.syncPublicDirectoryEntry(member)));
   }
 }
 

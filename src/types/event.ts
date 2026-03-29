@@ -1,5 +1,7 @@
 // Event types and interfaces
 
+import { ClubType } from './club';
+
 export interface Event {
   id: string;
   name: string;
@@ -14,6 +16,8 @@ export interface Event {
   createdBy: string; // Admin user ID
   clubId: string;
   clubName?: string;
+  clubType?: ClubType;
+  clubCode?: string;
   createdAt: Date;
   updatedAt: Date;
   isActive: boolean;

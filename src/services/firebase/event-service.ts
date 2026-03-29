@@ -20,7 +20,14 @@ class EventService {
   /**
    * Create a new event with auto-generated QR code
    */
-  async createEvent(input: CreateEventInput, adminId: string, clubId: string, clubName?: string): Promise<Event> {
+  async createEvent(
+    input: CreateEventInput,
+    adminId: string,
+    clubId: string,
+    clubName?: string,
+    clubType?: Event['clubType'],
+    clubCode?: string
+  ): Promise<Event> {
     try {
       // Generate unique event ID and QR code
       const eventId = qrCodeGeneratorService.generateEventId();
@@ -40,6 +47,8 @@ class EventService {
         createdBy: adminId,
         clubId,
         clubName: clubName || '',
+        clubType: clubType || 'rotaract',
+        clubCode: clubCode || '',
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
         isActive: true,
@@ -65,18 +74,28 @@ class EventService {
    */
   async getEventsByAdmin(adminId: string, includeInactive = false, clubId?: string): Promise<Event[]> {
     try {
-      // Fetch club-bound events plus legacy createdBy events, then merge/filter client-side.
-      const queries = [
-        clubId
-          ? query(collection(db, this.collectionName), where('clubId', '==', clubId))
-          : query(collection(db, this.collectionName), where('createdBy', '==', adminId)),
-      ];
+      const snapshots = [];
 
       if (clubId) {
-        queries.push(query(collection(db, this.collectionName), where('createdBy', '==', adminId)));
+        snapshots.push(
+          await getDocs(query(collection(db, this.collectionName), where('clubId', '==', clubId)))
+        );
+
+        // Legacy events may exist without club metadata. Try to include them, but don't fail the
+        // entire Event Manager page if security rules reject the old createdBy-only query.
+        try {
+          snapshots.push(
+            await getDocs(query(collection(db, this.collectionName), where('createdBy', '==', adminId)))
+          );
+        } catch (error) {
+          console.warn('Skipping legacy createdBy event query:', error);
+        }
+      } else {
+        snapshots.push(
+          await getDocs(query(collection(db, this.collectionName), where('createdBy', '==', adminId)))
+        );
       }
 
-      const snapshots = await Promise.all(queries.map((q) => getDocs(q)));
       const merged = new Map<string, Event>();
 
       snapshots.forEach((snapshot) => {

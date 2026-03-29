@@ -13,10 +13,12 @@ import {
     MapPin,
     Plus,
     QrCode,
+    Search,
+    SlidersHorizontal,
     Trash2,
     User,
 } from 'lucide-react';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useLocation, useNavigate } from 'react-router-dom';
 
@@ -28,6 +30,8 @@ const EventsPage: React.FC = () => {
   const [events, setEvents] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'active' | 'upcoming'>('upcoming');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState<'date_desc' | 'date_asc' | 'name_asc'>('date_desc');
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const canManageEvents =
     currentAdmin?.role === 'event_manager' || currentAdmin?.role === 'club_admin' || currentAdmin?.role === 'super_admin';
@@ -110,6 +114,28 @@ const EventsPage: React.FC = () => {
     navigate(`/events/${event.id}/qrcode`, { state: { event } });
   };
 
+  const visibleEvents = useMemo(() => {
+    const normalizedSearch = searchTerm.trim().toLowerCase();
+    let next = [...events];
+
+    if (normalizedSearch) {
+      next = next.filter((event) => {
+        const text = `${event.name} ${event.theme} ${event.speaker} ${event.location || ''}`.toLowerCase();
+        return text.includes(normalizedSearch);
+      });
+    }
+
+    if (sortBy === 'date_asc') {
+      next.sort((a, b) => (a.date > b.date ? 1 : -1));
+    } else if (sortBy === 'name_asc') {
+      next.sort((a, b) => a.name.localeCompare(b.name));
+    } else {
+      next.sort((a, b) => (a.date < b.date ? 1 : -1));
+    }
+
+    return next;
+  }, [events, searchTerm, sortBy]);
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -173,6 +199,38 @@ const EventsPage: React.FC = () => {
         </div>
       </div>
 
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="md:col-span-2 relative">
+              <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search by event, theme, speaker, or location"
+                className="input-field pl-10"
+              />
+            </div>
+            <div className="relative">
+              <SlidersHorizontal className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as 'date_desc' | 'date_asc' | 'name_asc')}
+                className="input-field pl-10"
+              >
+                <option value="date_desc">Sort: Newest first</option>
+                <option value="date_asc">Sort: Oldest first</option>
+                <option value="name_asc">Sort: Name A-Z</option>
+              </select>
+            </div>
+          </div>
+          <p className="text-xs text-gray-500 mt-2">
+            Showing {visibleEvents.length} of {events.length} events
+          </p>
+        </div>
+      </div>
+
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {isLoading ? (
@@ -182,16 +240,20 @@ const EventsPage: React.FC = () => {
               <p className="text-gray-600">Loading events...</p>
             </div>
           </div>
-        ) : events.length === 0 ? (
+        ) : visibleEvents.length === 0 ? (
           <div className="card text-center py-12">
             <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No events found</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              {events.length === 0 ? 'No events found' : 'No matching events'}
+            </h3>
             <p className="text-gray-600 mb-6">
-              {filter === 'upcoming'
+              {events.length === 0 && filter === 'upcoming'
                 ? 'Create your first event to get started'
-                : 'No events match the selected filter'}
+                : events.length === 0
+                  ? 'No events match the selected filter'
+                  : 'Try a different search term or filter'}
             </p>
-            {filter === 'upcoming' && (
+            {events.length === 0 && filter === 'upcoming' && (
               <button
                 type="button"
                 onClick={() => navigate('/events/create')}
@@ -204,7 +266,7 @@ const EventsPage: React.FC = () => {
           </div>
         ) : (
           <div className="grid gap-6">
-            {events.map((event) => (
+            {visibleEvents.map((event) => (
               <div
                 key={event.id}
                 className={`card transition-all ${

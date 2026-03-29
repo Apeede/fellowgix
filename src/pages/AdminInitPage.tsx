@@ -1,5 +1,6 @@
 import { authService } from '@services/firebase/auth-service';
 import FirestoreInitService from '@services/firebase/firestore-init-service';
+import { ClubType } from '@types/club';
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 
@@ -30,6 +31,8 @@ export default function AdminInitPage() {
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [clubName, setClubName] = useState('');
+  const [clubType, setClubType] = useState<ClubType>('rotaract');
+  const [clubCode, setClubCode] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState<DBStats | null>(null);
@@ -74,12 +77,14 @@ export default function AdminInitPage() {
     try {
       // Use the proper authService to create admin user
       // This creates both Firebase Auth user AND Firestore document
-      await authService.registerAdmin(email, password, name, 'super_admin', clubName);
+      await authService.registerAdmin(email, password, name, 'super_admin', clubName, clubType, clubCode);
 
       toast.success('Admin user created successfully!');
       setEmail('');
       setName('');
       setClubName('');
+      setClubType('rotaract');
+      setClubCode('');
       setPassword('');
       await loadStats();
       
@@ -216,6 +221,33 @@ export default function AdminInitPage() {
                   placeholder="Rotaract Club of Kampala"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   required
+                />
+              </div>
+              <div>
+                <label htmlFor="admin-club-type" className="block text-sm font-medium text-gray-700 mb-1">
+                  Club Type
+                </label>
+                <select
+                  id="admin-club-type"
+                  value={clubType}
+                  onChange={(e) => setClubType(e.target.value as ClubType)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="rotaract">Rotaract</option>
+                  <option value="rotary">Rotary</option>
+                </select>
+              </div>
+              <div>
+                <label htmlFor="admin-club-code" className="block text-sm font-medium text-gray-700 mb-1">
+                  Club Code
+                </label>
+                <input
+                  id="admin-club-code"
+                  type="text"
+                  value={clubCode}
+                  onChange={(e) => setClubCode(e.target.value)}
+                  placeholder="RCKLA"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
               <div>
