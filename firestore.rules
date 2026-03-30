@@ -52,6 +52,23 @@ service cloud.firestore {
       return isSuperAdmin() || sameClub(clubId);
     }
 
+    function canManageCanonicalClub(clubId, clubName) {
+      return isSuperAdmin() || (
+        isAdmin() &&
+        canonicalClubId(clubId, clubName) == canonicalClubId(adminData().clubId, adminData().clubName)
+      );
+    }
+
+    function canManageAttendanceRecord(attendanceData) {
+      return canManageCanonicalClub(attendanceData.clubId, '') || (
+        exists(/databases/$(database)/documents/events/$(attendanceData.eventId)) &&
+        canManageCanonicalClub(
+          get(/databases/$(database)/documents/events/$(attendanceData.eventId)).data.clubId,
+          get(/databases/$(database)/documents/events/$(attendanceData.eventId)).data.clubName
+        )
+      );
+    }
+
     function validRole(role) {
       return role in ['viewer', 'event_manager', 'admin', 'club_admin', 'super_admin'];
     }
@@ -257,10 +274,10 @@ service cloud.firestore {
     }
 
     match /attendance/{attendanceId} {
-      allow read: if isViewerLike() && canManageClub(resource.data.clubId);
+      allow read: if isViewerLike() && canManageAttendanceRecord(resource.data);
       // Public check-in allowed only when request club matches active event club.
       allow create: if validPublicAttendanceCreate();
-      allow update, delete: if isEventManagerLike() && canManageClub(resource.data.clubId);
+      allow update, delete: if isEventManagerLike() && canManageAttendanceRecord(resource.data);
     }
 
     match /guests/{guestId} {
