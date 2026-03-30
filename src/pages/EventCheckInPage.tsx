@@ -74,17 +74,17 @@ const EventCheckInPage: React.FC = () => {
             <div className="card bg-gradient-to-r from-primary-100 via-white to-primary-200 text-gray-900 border border-primary-200">
               <h2 className="text-4xl font-bold mb-2 text-gray-900">Welcome!</h2>
               <p className="text-xl text-gray-900">
-                Now attending: <span className="font-semibold">{event.name}</span>
+                Now attending: <span className="font-semibold text-gray-900">{event.name}</span>
               </p>
               <div className="mt-4 text-sm text-gray-800">
-                <p>
+                <p className="text-gray-800">
                   {new Date(event.date).toLocaleDateString('en-US', {
                     weekday: 'long',
                     month: 'long',
                     day: 'numeric',
                   })}
                 </p>
-                {event.theme && <p>Theme: {event.theme}</p>}
+                {event.theme && <p className="text-gray-800">Theme: {event.theme}</p>}
               </div>
             </div>
 
