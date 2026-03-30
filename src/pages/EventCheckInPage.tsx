@@ -71,7 +71,7 @@ const EventCheckInPage: React.FC = () => {
         ) : event ? (
           <div className="space-y-8">
             {/* Welcome Section */}
-            <div className="card bg-gradient-to-r from-primary-500 to-primary-700 text-gray-900">
+            <div className="card bg-gradient-to-r from-primary-100 via-white to-primary-200 text-gray-900 border border-primary-200">
               <h2 className="text-4xl font-bold mb-2 text-gray-900">Welcome!</h2>
               <p className="text-xl text-gray-900">
                 Now attending: <span className="font-semibold">{event.name}</span>
