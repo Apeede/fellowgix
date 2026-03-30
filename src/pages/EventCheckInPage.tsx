@@ -71,12 +71,12 @@ const EventCheckInPage: React.FC = () => {
         ) : event ? (
           <div className="space-y-8">
             {/* Welcome Section */}
-            <div className="card bg-gradient-to-r from-primary-500 to-primary-700 text-white">
-              <h2 className="text-4xl font-bold mb-2">Welcome!</h2>
-              <p className="text-xl">
+            <div className="card bg-gradient-to-r from-primary-500 to-primary-700 text-gray-900">
+              <h2 className="text-4xl font-bold mb-2 text-gray-900">Welcome!</h2>
+              <p className="text-xl text-gray-900">
                 Now attending: <span className="font-semibold">{event.name}</span>
               </p>
-              <div className="mt-4 text-sm opacity-90">
+              <div className="mt-4 text-sm text-gray-800">
                 <p>
                   {new Date(event.date).toLocaleDateString('en-US', {
                     weekday: 'long',
