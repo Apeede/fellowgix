@@ -172,10 +172,10 @@ service cloud.firestore {
           'createdAt',
           'updatedAt'
         ])
-        && request.resource.data.eventId is string
-        && request.resource.data.eventId.size() > 0
         && request.resource.data.clubId is string
         && request.resource.data.clubId.size() > 0
+        && request.resource.data.eventId is string
+        && request.resource.data.eventId.size() > 0
         && exists(/databases/$(database)/documents/events/$(request.resource.data.eventId))
         && get(/databases/$(database)/documents/events/$(request.resource.data.eventId)).data.isActive == true
         && canonicalClubIdOnly(request.resource.data.clubId) == canonicalClubIdOnly(
