@@ -43,7 +43,7 @@ const EventQRCodePage: React.FC = () => {
     if (!event && eventId) {
       loadEvent();
     }
-  }, [eventId, loadEvent]);
+  }, [event, eventId, loadEvent]);
 
   const handleDownload = async () => {
     if (!event) return;

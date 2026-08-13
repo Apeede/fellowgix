@@ -60,7 +60,7 @@ class GuestService {
   /**
    * Convert Firestore guest document to Guest type
    */
-  private convertGuestDoc(doc: any, id: string): Guest {
+  private convertGuestDoc(doc: Record<string, unknown>, id: string): Guest {
     return {
       ...doc,
       id,

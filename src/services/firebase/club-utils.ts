@@ -1,7 +1,7 @@
 export const normalizeEmail = (value: string): string => value.trim().toLowerCase();
 
 export const normalizePhone = (value: string): string =>
-  value.replace(/\s+/g, '').replace(/[()\-]/g, '').trim();
+  value.replace(/\s+/g, '').replace(/[()-]/g, '').trim();
 
 export const normalizeClubName = (value?: string): string => {
   const base = (value || '').trim();

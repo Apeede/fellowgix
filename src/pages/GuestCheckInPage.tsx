@@ -209,7 +209,7 @@ const GuestCheckInPage: React.FC = () => {
               </p>
             )}
             <p className="text-sm text-green-600 mt-4">
-              Redirecting back to scanner...
+              Preparing your event card…
             </p>
           </div>
         )}

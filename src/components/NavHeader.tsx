@@ -25,7 +25,6 @@ export const NavHeader: React.FC<NavHeaderProps> = ({
   breadcrumbs,
   actions,
   showUserMenu = true,
-  onMobileMenuToggle,
 }) => {
   const { currentAdmin, signOut } = useAuth();
   const navigate = useNavigate();

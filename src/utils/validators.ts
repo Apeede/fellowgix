@@ -30,7 +30,7 @@ export function isValidName(name: string): boolean {
 /**
  * Validates non-empty string
  */
-export function isNonEmptyString(value: any): value is string {
+export function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0;
 }
 
@@ -45,14 +45,14 @@ export function isValidUUID(value: string): boolean {
 /**
  * Validates if value is a date
  */
-export function isValidDate(value: any): value is Date {
+export function isValidDate(value: unknown): value is Date {
   return value instanceof Date && !isNaN(value.getTime());
 }
 
 /**
  * Validates if object is not empty
  */
-export function isNonEmptyObject<T extends object>(obj: T): obj is T & Record<string, any> {
+export function isNonEmptyObject<T extends object>(obj: T): obj is T & Record<string, unknown> {
   return Object.keys(obj).length > 0;
 }
 
@@ -66,7 +66,7 @@ export function isNonEmptyArray<T>(arr: T[]): arr is [T, ...T[]] {
 /**
  * Validates if value is a positive number
  */
-export function isPositiveNumber(value: any): value is number {
+export function isPositiveNumber(value: unknown): value is number {
   return typeof value === 'number' && !isNaN(value) && value > 0;
 }
 

@@ -4,29 +4,34 @@
 
 @layer base {
   body {
-    @apply antialiased overflow-x-hidden;
+    @apply antialiased overflow-x-hidden bg-gray-50 text-gray-900;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  :focus-visible {
+    @apply outline-none ring-2 ring-primary-600 ring-offset-2;
   }
 }
 
 @layer components {
   .btn-primary {
-    @apply px-3 sm:px-4 py-2 bg-primary-700 text-white rounded-lg font-medium hover:bg-primary-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base;
+    @apply min-h-11 px-4 py-2.5 bg-primary-700 text-white rounded-xl font-semibold shadow-sm hover:bg-primary-800 hover:shadow-md active:translate-y-px transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none text-sm sm:text-base;
   }
 
   .btn-secondary {
-    @apply px-3 sm:px-4 py-2 bg-gray-200 text-gray-800 rounded-lg font-medium hover:bg-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base;
+    @apply min-h-11 px-4 py-2.5 bg-gray-100 text-gray-800 rounded-xl font-semibold hover:bg-gray-200 active:translate-y-px transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base;
   }
 
   .btn-outline {
-    @apply px-3 sm:px-4 py-2 border-2 border-primary-700 text-primary-700 rounded-lg font-medium hover:bg-primary-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base;
+    @apply min-h-11 px-4 py-2.5 border border-primary-700 text-primary-700 rounded-xl font-semibold hover:bg-primary-50 active:translate-y-px transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base;
   }
 
   .input-field {
-    @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-transparent;
+    @apply w-full min-h-11 px-3.5 py-2.5 bg-white border border-gray-300 rounded-xl shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-transparent transition-shadow;
   }
 
   .card {
-    @apply bg-white rounded-xl shadow-md p-4 sm:p-6;
+    @apply bg-white rounded-2xl border border-gray-200 shadow-sm p-5 sm:p-6 transition-shadow;
   }
 
   .card-dark {

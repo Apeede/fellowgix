@@ -50,7 +50,7 @@ export async function apiCall<T>(
 /**
  * Type guard for API responses
  */
-export function isApiResponse<T>(value: any): value is ApiResponse<T> {
+export function isApiResponse<T>(value: unknown): value is ApiResponse<T> {
   return (
     typeof value === 'object' &&
     value !== null &&

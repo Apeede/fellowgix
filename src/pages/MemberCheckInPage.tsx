@@ -174,7 +174,7 @@ const MemberCheckInPage: React.FC = () => {
         }, 1000);
       }
     } catch (error) {
-      toast.error('Check-in failed');
+      toast.error(error instanceof Error ? error.message : 'Check-in failed');
       console.error(error);
     } finally {
       setIsCheckingIn(false);
@@ -213,7 +213,7 @@ const MemberCheckInPage: React.FC = () => {
               Welcome {selectedMember?.name}!
             </p>
             <p className="text-sm text-green-600">
-              Redirecting back to scanner...
+              Preparing your event card…
             </p>
           </div>
         )}

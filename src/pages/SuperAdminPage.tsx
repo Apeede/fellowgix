@@ -550,7 +550,7 @@ const SuperAdminPage: React.FC = () => {
   const archiveByClub = async (collectionName: ClubCollection, club: ClubSummary): Promise<number> => {
     let archivedCount = 0;
 
-    while (true) {
+    for (;;) {
       const snap = await getDocs(
         query(collection(db, collectionName), where('clubId', '==', club.clubId), limit(200))
       );
@@ -655,7 +655,7 @@ const SuperAdminPage: React.FC = () => {
     try {
       let totalRestored = 0;
 
-      while (true) {
+      for (;;) {
         const snap = await getDocs(
           query(collection(db, 'trash'), where('deleteGroupId', '==', group.deleteGroupId), limit(200))
         );

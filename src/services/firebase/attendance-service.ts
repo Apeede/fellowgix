@@ -12,6 +12,7 @@ import {
     where,
 } from 'firebase/firestore';
 import { db } from './firebase';
+import { FirebaseError } from 'firebase/app';
 import { firestoreTimestampToDate, getTimestampMinutesAgo } from './firestore-utils';
 
 class AttendanceService {
@@ -71,6 +72,9 @@ class AttendanceService {
         message: `Welcome ${personName}! Check-in recorded.`,
       };
     } catch (error) {
+      if (error instanceof FirebaseError && error.code === 'permission-denied') {
+        throw new Error('This check-in could not be verified. Ask an administrator to confirm that the event is active and the attendee belongs to this club.');
+      }
       throw new Error(`Failed to record attendance: ${(error instanceof Error ? error.message : String(error))}`);
     }
   }

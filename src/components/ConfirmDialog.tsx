@@ -4,7 +4,7 @@
  */
 
 import { AlertTriangle, CheckCircle, HelpCircle } from 'lucide-react';
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 
 export type ConfirmationType = 'danger' | 'warning' | 'info' | 'success';
 
@@ -56,7 +56,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   onCancel,
   isLoading = false,
 }) => {
-  const config = typeConfig[type];
+  const config = typeConfig[isDangerous ? 'danger' : type];
 
   if (!isOpen) return null;
 
@@ -113,10 +113,13 @@ const Spinner = ({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) => {
 };
 
 // Hook for easier usage
+// This module intentionally exports the component and its companion hook.
+// eslint-disable-next-line react-refresh/only-export-components
 export function useConfirmDialog() {
   const [isOpen, setIsOpen] = useState(false);
   const [config, setConfig] = useState<Omit<ConfirmDialogProps, 'isOpen' | 'onConfirm' | 'onCancel'> | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const resolverRef = useRef<((result: boolean) => void) | null>(null);
 
   const confirm = (
     options: Omit<ConfirmDialogProps, 'isOpen' | 'onConfirm' | 'onCancel' | 'isLoading'>,
@@ -132,24 +135,22 @@ export function useConfirmDialog() {
         resolve(result);
       };
 
-      // Store these for use in the buttons
-      (window as any).__confirmResolve = resolveWithCleanup;
+      resolverRef.current = resolveWithCleanup;
     });
   };
 
   const handleConfirm = async () => {
     setIsLoading(true);
     try {
-      await config?.onConfirm?.();
-      (window as any).__confirmResolve?.(true);
+      resolverRef.current?.(true);
     } catch (error) {
       console.error('Confirmation error:', error);
-      (window as any).__confirmResolve?.(false);
+      resolverRef.current?.(false);
     }
   };
 
   const handleCancel = () => {
-    (window as any).__confirmResolve?.(false);
+    resolverRef.current?.(false);
   };
 
   return {
@@ -162,7 +163,12 @@ export function useConfirmDialog() {
     ConfirmDialogComponent: (
       <ConfirmDialog
         isOpen={isOpen}
-        {...(config as any)}
+        type={config?.type}
+        title={config?.title || ''}
+        message={config?.message || ''}
+        confirmLabel={config?.confirmLabel}
+        cancelLabel={config?.cancelLabel}
+        isDangerous={config?.isDangerous}
         isLoading={isLoading}
         onConfirm={handleConfirm}
         onCancel={handleCancel}
