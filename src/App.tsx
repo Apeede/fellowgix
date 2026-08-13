@@ -1,3 +1,4 @@
+import ErrorBoundary from '@components/ErrorBoundary';
 import ProtectedRoute from '@components/ProtectedRoute';
 import { AuthProvider } from '@context/AuthContext';
 import AdminInitPage from '@pages/AdminInitPage';
@@ -9,8 +10,8 @@ import EventQRCodePage from '@pages/EventQRCodePage';
 import EventsPage from '@pages/EventsPage';
 import GuestCheckInPage from '@pages/GuestCheckInPage';
 import LoginPage from '@pages/LoginPage';
-import MembersPage from '@pages/MembersPage';
 import MemberCheckInPage from '@pages/MemberCheckInPage';
+import MembersPage from '@pages/MembersPage';
 import ScannerPage from '@pages/ScannerPage';
 import React, { Suspense } from 'react';
 import { Toaster } from 'react-hot-toast';
@@ -45,8 +46,9 @@ function App() {
   );
 
   return (
-    <Router>
-      <AuthProvider>
+    <ErrorBoundary>
+      <Router>
+        <AuthProvider>
         <Routes>
           {/* Public Routes */}
           <Route path="/login" element={<LoginPage />} />
@@ -237,7 +239,8 @@ function App() {
           }}
         />
       </AuthProvider>
-    </Router>
+      </Router>
+    </ErrorBoundary>
   );
 }
 
