@@ -36,6 +36,7 @@ const GuestCheckInPage: React.FC = () => {
     clubName: '',
     clubType: 'rotaract' as 'rotary' | 'rotaract',
     clubCode: '',
+    isActive: false,
   });
 
   useEffect(() => {
@@ -51,6 +52,7 @@ const GuestCheckInPage: React.FC = () => {
           clubName: event?.clubName || '',
           clubType: event?.clubType === 'rotary' ? 'rotary' : 'rotaract',
           clubCode: event?.clubCode || '',
+          isActive: event?.isActive === true,
         });
       } catch (error) {
         setEventClub({
@@ -58,6 +60,7 @@ const GuestCheckInPage: React.FC = () => {
           clubName: '',
           clubType: 'rotaract',
           clubCode: '',
+          isActive: false,
         });
       }
     };
@@ -120,10 +123,16 @@ const GuestCheckInPage: React.FC = () => {
       return;
     }
 
+    if (!eventClub.isActive) {
+      toast.error('Check-in is closed for this event. Ask an administrator to activate it.');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       // Check in guest (creates if new, updates if returning)
       const guestData = await guestService.checkInGuest(formData, eventClub.clubId, {
+        eventId,
         clubName: eventClub.clubName,
         clubType: eventClub.clubType,
         clubCode: eventClub.clubCode,

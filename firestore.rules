@@ -48,6 +48,10 @@ service cloud.firestore {
         : clubId;
     }
 
+    function canonicalClubIdOnly(clubId) {
+      return clubId == 'tankhill' ? 'rotaract-tankhill-city' : clubId;
+    }
+
     function canManageClub(clubId) {
       return isSuperAdmin() || sameClub(clubId);
     }
@@ -105,13 +109,9 @@ service cloud.firestore {
     function isValidPublicMemberAttendance() {
       return request.resource.data.type == 'member'
         && exists(/databases/$(database)/documents/memberPublicDirectory/$(request.resource.data.personId))
-        && canonicalClubId(
-          get(/databases/$(database)/documents/memberPublicDirectory/$(request.resource.data.personId)).data.clubId,
-          get(/databases/$(database)/documents/memberPublicDirectory/$(request.resource.data.personId)).data.club
-        ) == canonicalClubId(
-          request.resource.data.clubId,
-          get(/databases/$(database)/documents/events/$(request.resource.data.eventId)).data.clubName
-        )
+        && canonicalClubIdOnly(
+          get(/databases/$(database)/documents/memberPublicDirectory/$(request.resource.data.personId)).data.clubId
+        ) == canonicalClubIdOnly(request.resource.data.clubId)
         && get(/databases/$(database)/documents/memberPublicDirectory/$(request.resource.data.personId)).data.isActive == true
         && get(/databases/$(database)/documents/memberPublicDirectory/$(request.resource.data.personId)).data.name == request.resource.data.personName
         && get(/databases/$(database)/documents/memberPublicDirectory/$(request.resource.data.personId)).data.email == request.resource.data.personEmail
@@ -145,13 +145,9 @@ service cloud.firestore {
         && request.resource.data.eCardGenerated == false
         && request.resource.data.eCardUrl == ''
         && exists(/databases/$(database)/documents/events/$(request.resource.data.eventId))
-        && canonicalClubId(
-          get(/databases/$(database)/documents/events/$(request.resource.data.eventId)).data.clubId,
-          get(/databases/$(database)/documents/events/$(request.resource.data.eventId)).data.clubName
-        ) == canonicalClubId(
-          request.resource.data.clubId,
-          get(/databases/$(database)/documents/events/$(request.resource.data.eventId)).data.clubName
-        )
+        && canonicalClubIdOnly(
+          get(/databases/$(database)/documents/events/$(request.resource.data.eventId)).data.clubId
+        ) == canonicalClubIdOnly(request.resource.data.clubId)
         && get(/databases/$(database)/documents/events/$(request.resource.data.eventId)).data.isActive == true
         && (
           isValidPublicMemberAttendance() ||
@@ -161,6 +157,7 @@ service cloud.firestore {
 
     function validPublicGuestCreate() {
       return request.resource.data.keys().hasOnly([
+          'eventId',
           'clubId',
           'clubName',
           'clubType',
@@ -175,18 +172,14 @@ service cloud.firestore {
           'createdAt',
           'updatedAt'
         ])
+        && request.resource.data.eventId is string
+        && request.resource.data.eventId.size() > 0
         && request.resource.data.clubId is string
         && request.resource.data.clubId.size() > 0
-        && exists(/databases/$(database)/documents/clubs/$(request.resource.data.clubId))
-        && get(/databases/$(database)/documents/clubs/$(request.resource.data.clubId)).data.isActive == true
-        && request.resource.data.clubName == get(/databases/$(database)/documents/clubs/$(request.resource.data.clubId)).data.clubName
-        && request.resource.data.clubType == get(/databases/$(database)/documents/clubs/$(request.resource.data.clubId)).data.clubType
-        && (
-          request.resource.data.clubCode == get(/databases/$(database)/documents/clubs/$(request.resource.data.clubId)).data.clubCode ||
-          (
-            request.resource.data.clubCode == '' &&
-            get(/databases/$(database)/documents/clubs/$(request.resource.data.clubId)).data.clubCode == null
-          )
+        && exists(/databases/$(database)/documents/events/$(request.resource.data.eventId))
+        && get(/databases/$(database)/documents/events/$(request.resource.data.eventId)).data.isActive == true
+        && canonicalClubIdOnly(request.resource.data.clubId) == canonicalClubIdOnly(
+          get(/databases/$(database)/documents/events/$(request.resource.data.eventId)).data.clubId
         )
         && request.resource.data.name is string
         && request.resource.data.email is string
@@ -288,6 +281,7 @@ service cloud.firestore {
 
       function isGuestCheckInUpdate() {
         return request.auth == null
+          && request.resource.data.eventId == resource.data.eventId
           && request.resource.data.clubId == resource.data.clubId
           && request.resource.data.clubName == resource.data.clubName
           && request.resource.data.clubType == resource.data.clubType

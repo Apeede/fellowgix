@@ -77,7 +77,7 @@ class GuestService {
   async checkInGuest(
     input: CreateGuestInput,
     clubId: string,
-    hostClub?: { clubName?: string; clubType?: ClubType; clubCode?: string }
+    hostClub?: { clubName?: string; clubType?: ClubType; clubCode?: string; eventId?: string }
   ): Promise<GuestCheckInData> {
     try {
       const normalizedInput: CreateGuestInput = {
@@ -93,6 +93,7 @@ class GuestService {
       // In that case, avoid guest lookups entirely so anonymous users are not blocked by read rules.
       if (hostClub) {
         const guestData = {
+          eventId: hostClub.eventId || '',
           clubId,
           clubName: hostClubMetadata.clubName,
           clubType: hostClubMetadata.clubType,
