@@ -232,7 +232,8 @@ service cloud.firestore {
         isSuperAdmin() ||
         clubId == adminData().clubId
       );
-      allow delete: if false;
+      // Club removal is implemented as a recoverable archive and is restricted to super admins.
+      allow delete: if isSuperAdmin();
     }
 
     match /members/{memberId} {
@@ -248,7 +249,8 @@ service cloud.firestore {
     }
 
     match /memberPublicDirectory/{memberId} {
-      allow read: if resource.data.isActive == true;
+      allow read: if resource.data.isActive == true ||
+        (isViewerLike() && canManageClub(resource.data.clubId));
       allow create, update: if isClubAdminLike() && canManageClub(request.resource.data.clubId);
       allow delete: if isClubAdminLike() && canManageClub(resource.data.clubId);
     }

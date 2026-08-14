@@ -305,7 +305,9 @@ class MemberService {
       }
 
       if (merged.size > 0) {
-        return Array.from(merged.values()).slice(0, 25);
+        // Keep the full eligible set in memory. Search results are limited after filtering;
+        // truncating here made every member after the first 25 impossible to find.
+        return Array.from(merged.values()).sort((a, b) => a.name.localeCompare(b.name));
       }
 
       if (directoryResult.status === 'rejected' && membersResult.status === 'rejected') {

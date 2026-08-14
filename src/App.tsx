@@ -1,18 +1,7 @@
 import ErrorBoundary from '@components/ErrorBoundary';
 import ProtectedRoute from '@components/ProtectedRoute';
 import { AuthProvider } from '@context/AuthContext';
-import AdminInitPage from '@pages/AdminInitPage';
-import CreateEventPage from '@pages/CreateEventPage';
 import DashboardPage from '@pages/DashboardPage';
-import ECardPage from '@pages/ECardPage';
-import EventCheckInPage from '@pages/EventCheckInPage';
-import EventQRCodePage from '@pages/EventQRCodePage';
-import EventsPage from '@pages/EventsPage';
-import GuestCheckInPage from '@pages/GuestCheckInPage';
-import LoginPage from '@pages/LoginPage';
-import MemberCheckInPage from '@pages/MemberCheckInPage';
-import MembersPage from '@pages/MembersPage';
-import ScannerPage from '@pages/ScannerPage';
 import React, { Suspense } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { Navigate, Route, BrowserRouter as Router, Routes, useParams } from 'react-router-dom';
@@ -41,6 +30,17 @@ function lazyWithReload<T extends React.ComponentType<object>>(
 }
 
 const SuperAdminPage = lazyWithReload(() => import('@pages/SuperAdminPage'));
+const AdminInitPage = lazyWithReload(() => import('@pages/AdminInitPage'));
+const CreateEventPage = lazyWithReload(() => import('@pages/CreateEventPage'));
+const ECardPage = lazyWithReload(() => import('@pages/ECardPage'));
+const EventCheckInPage = lazyWithReload(() => import('@pages/EventCheckInPage'));
+const EventQRCodePage = lazyWithReload(() => import('@pages/EventQRCodePage'));
+const EventsPage = lazyWithReload(() => import('@pages/EventsPage'));
+const GuestCheckInPage = lazyWithReload(() => import('@pages/GuestCheckInPage'));
+const LoginPage = lazyWithReload(() => import('@pages/LoginPage'));
+const MemberCheckInPage = lazyWithReload(() => import('@pages/MemberCheckInPage'));
+const MembersPage = lazyWithReload(() => import('@pages/MembersPage'));
+const ScannerPage = lazyWithReload(() => import('@pages/ScannerPage'));
 const EventAnalyticsPage = lazyWithReload(() => import('@pages/EventAnalyticsPage'));
 const AttendanceListPage = lazyWithReload(() => import('@pages/AttendanceListPage'));
 const ClubAnalyticsPage = lazyWithReload(() => import('@pages/ClubAnalyticsPage'));
@@ -73,9 +73,9 @@ function App() {
         <AuthProvider>
         <Routes>
           {/* Public Routes */}
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/admin-init" element={<AdminInitPage />} />
-          <Route path="/scan" element={<ScannerPage />} />
+          <Route path="/login" element={withSuspense(<LoginPage />)} />
+          <Route path="/admin-init" element={withSuspense(<AdminInitPage />)} />
+          <Route path="/scan" element={withSuspense(<ScannerPage />)} />
 
           {/* Protected Routes */}
           <Route
@@ -91,7 +91,7 @@ function App() {
             path="/members"
             element={
               <ProtectedRoute allowedRoles={['super_admin', 'club_admin']}>
-                <MembersPage />
+                {withSuspense(<MembersPage />)}
               </ProtectedRoute>
             }
           />
@@ -110,7 +110,7 @@ function App() {
             path="/events"
             element={
               <ProtectedRoute allowedRoles={['super_admin', 'club_admin', 'event_manager', 'viewer']}>
-                <EventsPage />
+                {withSuspense(<EventsPage />)}
               </ProtectedRoute>
             }
           />
@@ -119,7 +119,7 @@ function App() {
             path="/events/create"
             element={
               <ProtectedRoute allowedRoles={['super_admin', 'club_admin', 'event_manager']}>
-                <CreateEventPage />
+                {withSuspense(<CreateEventPage />)}
               </ProtectedRoute>
             }
           />
@@ -137,7 +137,7 @@ function App() {
             path="/events/:eventId/manage-qrcode"
             element={
               <ProtectedRoute allowedRoles={['super_admin', 'club_admin', 'event_manager', 'viewer']}>
-                <EventQRCodePage />
+                {withSuspense(<EventQRCodePage />)}
               </ProtectedRoute>
             }
           />
@@ -150,23 +150,23 @@ function App() {
           {/* Check-In Routes */}
           <Route
             path="/events/:eventId/checkin"
-            element={<EventCheckInPage />}
+            element={withSuspense(<EventCheckInPage />)}
           />
 
           <Route
             path="/events/:eventId/checkin/member"
-            element={<MemberCheckInPage />}
+            element={withSuspense(<MemberCheckInPage />)}
           />
 
           <Route
             path="/events/:eventId/checkin/guest"
-            element={<GuestCheckInPage />}
+            element={withSuspense(<GuestCheckInPage />)}
           />
 
           {/* E-Card Route */}
           <Route
             path="/events/:eventId/ecard"
-            element={<ECardPage />}
+            element={withSuspense(<ECardPage />)}
           />
 
           {/* Analytics Routes */}

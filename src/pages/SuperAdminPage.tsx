@@ -1,6 +1,7 @@
 import { useAuth } from '@context/useAuth';
 import { ClubType } from '@types/club';
 import { Admin, authService } from '@services/firebase/auth-service';
+import { clubService } from '@services/firebase/club-service';
 import {
   addDoc,
   collection,
@@ -87,7 +88,16 @@ interface TrashRecord {
 
 type AdminRole = 'super_admin' | 'club_admin' | 'event_manager' | 'viewer';
 
-const CLUB_COLLECTIONS = ['clubs', 'admins', 'events', 'members', 'guests', 'attendance'] as const;
+const CLUB_COLLECTIONS = [
+  'clubs',
+  'events',
+  'members',
+  'memberPublicDirectory',
+  'guests',
+  'attendance',
+  // Keep admins last so authorization remains valid throughout the archive.
+  'admins',
+] as const;
 
 type ClubCollection = (typeof CLUB_COLLECTIONS)[number];
 
@@ -105,6 +115,8 @@ const maybeToDate = (value: unknown): Date | undefined => {
 
 const trashDocId = (collectionName: string, docId: string): string =>
   `${collectionName}__${docId}`.replace(/\//g, '__');
+
+const searchableText = (value: unknown): string => String(value ?? '').toLowerCase();
 
 const SuperAdminPage: React.FC = () => {
   const navigate = useNavigate();
@@ -139,6 +151,8 @@ const SuperAdminPage: React.FC = () => {
     sendInviteEmail: true,
   });
   const [adminSearch, setAdminSearch] = useState('');
+  const [clubSearch, setClubSearch] = useState('');
+  const [deletingClubId, setDeletingClubId] = useState<string | null>(null);
   const [adminRoleFilter, setAdminRoleFilter] = useState<'all' | AdminRole>('all');
   const [adminStatusFilter, setAdminStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [adminPage, setAdminPage] = useState(1);
@@ -360,18 +374,93 @@ const SuperAdminPage: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      const newAdmin = await authService.createAdminBySuperAdmin({
-        name: form.name.trim(),
-        email: form.email.trim().toLowerCase(),
-        password: effectivePassword,
-        clubId: form.clubId || undefined,
-        clubName: form.clubName.trim(),
-        clubType: form.clubType,
-        clubCode: form.clubCode.trim() || undefined,
-        role: form.role,
-        sendInviteEmail: form.sendInviteEmail,
-      });
-      await writeAuditLog('ADMIN_CREATED', 'admin', newAdmin.id, {
+      const normalizedEmail = form.email.trim().toLowerCase();
+      const existingAdmin = admins.find(
+        (admin) => searchableText(admin.email) === normalizedEmail
+      );
+      if (existingAdmin) {
+        throw new Error(`An active admin account already exists for ${normalizedEmail}.`);
+      }
+
+      // Club archives and individual admin archives use different group IDs. Looking up the
+      // archived payload by email catches both cases while the Firebase Auth account still exists.
+      const archivedEmailSnapshot = await getDocs(
+        query(collection(db, 'trash'), where('payload.email', '==', normalizedEmail), limit(20))
+      );
+      const archivedAdminDoc = archivedEmailSnapshot.docs.find(
+        (row) => String(row.data().sourceCollection || '') === 'admins'
+      );
+      const archivedAdmin = archivedAdminDoc
+        ? {
+            adminId: String(archivedAdminDoc.data().sourceId || ''),
+            email: normalizedEmail,
+          }
+        : undefined;
+      let newAdmin: Admin;
+      let auditAction = 'ADMIN_CREATED';
+
+      if (archivedAdmin) {
+        const club = await clubService.ensureClub({
+          clubId: form.clubId || undefined,
+          clubName: form.clubName.trim(),
+          clubType: form.clubType,
+          clubCode: form.clubCode.trim() || undefined,
+        });
+        const activeClubAdmins = admins.filter(
+          (admin) => admin.clubId === club.clubId && admin.isActive
+        ).length;
+        if (activeClubAdmins >= 3) {
+          throw new Error('This club already has the maximum of 3 admins. Deactivate one before adding another.');
+        }
+
+        if (!archivedAdmin.adminId || !archivedAdminDoc) {
+          throw new Error('The archived account could not be found. Refresh and try again.');
+        }
+
+        const restoredAt = new Date();
+        newAdmin = {
+          id: archivedAdmin.adminId,
+          name: form.name.trim(),
+          email: normalizedEmail,
+          clubId: club.clubId,
+          clubName: club.clubName,
+          clubType: club.clubType,
+          clubCode: club.clubCode,
+          role: form.role,
+          createdAt: restoredAt,
+          isActive: true,
+          inviteStatus: form.sendInviteEmail ? 'pending' : 'accepted',
+          invitedAt: form.sendInviteEmail ? restoredAt : undefined,
+        };
+
+        const batch = writeBatch(db);
+        batch.set(doc(db, 'admins', newAdmin.id), {
+          ...newAdmin,
+          createdAt: Timestamp.now(),
+          invitedAt: form.sendInviteEmail ? Timestamp.now() : null,
+        });
+        batch.delete(archivedAdminDoc.ref);
+        await batch.commit();
+
+        if (form.sendInviteEmail) {
+          await authService.sendAdminPasswordReset(normalizedEmail);
+        }
+        auditAction = 'ADMIN_RESTORED_AND_REASSIGNED';
+      } else {
+        newAdmin = await authService.createAdminBySuperAdmin({
+          name: form.name.trim(),
+          email: normalizedEmail,
+          password: effectivePassword,
+          clubId: form.clubId || undefined,
+          clubName: form.clubName.trim(),
+          clubType: form.clubType,
+          clubCode: form.clubCode.trim() || undefined,
+          role: form.role,
+          sendInviteEmail: form.sendInviteEmail,
+        });
+      }
+
+      await writeAuditLog(auditAction, 'admin', newAdmin.id, {
         email: newAdmin.email,
         role: newAdmin.role,
         clubId: newAdmin.clubId,
@@ -380,7 +469,7 @@ const SuperAdminPage: React.FC = () => {
         clubCode: newAdmin.clubCode || null,
         inviteStatus: newAdmin.inviteStatus || 'accepted',
       });
-      toast.success('Admin created successfully');
+      toast.success(archivedAdmin ? 'Archived admin restored and assigned successfully' : 'Admin created successfully');
       setForm({
         name: '',
         email: '',
@@ -583,20 +672,20 @@ const SuperAdminPage: React.FC = () => {
   };
 
   const handleDeleteClub = async (club: ClubSummary) => {
+    if (deletingClubId) return;
+
+    if (club.clubId === currentAdmin?.clubId) {
+      toast.error('You cannot archive your own club while signed in. Use another super admin account.');
+      return;
+    }
+
     const confirmed = requireTypedConfirmation(
       `Archive all data for ${club.clubName}? This removes club data from live views until restored.`,
       `DELETE CLUB ${club.clubId}`
     );
     if (!confirmed) return;
 
-    if (club.clubId === currentAdmin?.clubId) {
-      const secondConfirmed = requireTypedConfirmation(
-        'You are archiving your own club. This can remove your current admin record immediately.',
-        `I UNDERSTAND ${club.clubId}`
-      );
-      if (!secondConfirmed) return;
-    }
-
+    setDeletingClubId(club.clubId);
     try {
       const archiveCounts: Record<string, number> = {};
       for (const collectionName of CLUB_COLLECTIONS) {
@@ -612,8 +701,10 @@ const SuperAdminPage: React.FC = () => {
         `Club archived (club:${archiveCounts.clubs}, admins:${archiveCounts.admins}, events:${archiveCounts.events}, members:${archiveCounts.members}, guests:${archiveCounts.guests}, attendance:${archiveCounts.attendance})`
       );
       await loadSystemData();
-    } catch {
-      toast.error('Failed to archive club data');
+    } catch (error) {
+      toast.error(error instanceof Error ? `Failed to archive club: ${error.message}` : 'Failed to archive club data');
+    } finally {
+      setDeletingClubId(null);
     }
   };
 
@@ -701,15 +792,25 @@ const SuperAdminPage: React.FC = () => {
             : !admin.isActive;
       const searchPass =
         term.length === 0 ||
-        admin.name.toLowerCase().includes(term) ||
-        admin.email.toLowerCase().includes(term) ||
-        (admin.clubName || '').toLowerCase().includes(term) ||
-        admin.clubId.toLowerCase().includes(term) ||
-        (admin.clubCode || '').toLowerCase().includes(term) ||
-        (admin.clubType || '').toLowerCase().includes(term);
+        searchableText(admin.name).includes(term) ||
+        searchableText(admin.email).includes(term) ||
+        searchableText(admin.clubName).includes(term) ||
+        searchableText(admin.clubId).includes(term) ||
+        searchableText(admin.clubCode).includes(term) ||
+        searchableText(admin.clubType).includes(term);
       return rolePass && statusPass && searchPass;
     });
   }, [sortedAdmins, adminSearch, adminRoleFilter, adminStatusFilter]);
+  const filteredClubs = useMemo(() => {
+    const term = clubSearch.trim().toLowerCase();
+    if (!term) return clubs;
+
+    return clubs.filter((club) =>
+      [club.clubName, club.clubId, club.clubCode, club.clubType].some((value) =>
+        searchableText(value).includes(term)
+      )
+    );
+  }, [clubs, clubSearch]);
   const totalPages = Math.max(1, Math.ceil(filteredAdmins.length / pageSize));
   const pagedAdmins = useMemo(
     () => filteredAdmins.slice((adminPage - 1) * pageSize, adminPage * pageSize),
@@ -850,8 +951,18 @@ const SuperAdminPage: React.FC = () => {
 
               <div className="card">
                 <h2 className="text-xl font-bold text-gray-900 mb-4">All Clubs (System)</h2>
+                <div className="relative mb-4">
+                  <Search className="w-4 h-4 text-gray-400 absolute top-3 left-3" />
+                  <input
+                    className="input-field pl-9"
+                    value={clubSearch}
+                    onChange={(e) => setClubSearch(e.target.value)}
+                    placeholder="Search clubs by name, ID, code or type..."
+                    aria-label="Search clubs"
+                  />
+                </div>
                 <div className="space-y-3 max-h-[520px] overflow-y-auto pr-1">
-                  {clubs.map((club) => (
+                  {filteredClubs.map((club) => (
                     <div key={club.clubId} className="border border-gray-200 rounded-lg p-3">
                       <div className="flex items-start justify-between gap-3">
                         <div>
@@ -868,15 +979,24 @@ const SuperAdminPage: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => handleDeleteClub(club)}
-                          className="text-red-600 border border-red-200 px-3 py-1.5 rounded-lg hover:bg-red-50 text-sm flex items-center gap-1"
+                          disabled={deletingClubId !== null}
+                          className="text-red-600 border border-red-200 px-3 py-1.5 rounded-lg hover:bg-red-50 text-sm flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          <Trash2 className="w-4 h-4" />
-                          Archive Club
+                          {deletingClubId === club.clubId ? (
+                            <Loader className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="w-4 h-4" />
+                          )}
+                          {deletingClubId === club.clubId ? 'Archiving...' : 'Archive Club'}
                         </button>
                       </div>
                     </div>
                   ))}
-                  {clubs.length === 0 && <p className="text-gray-600">No clubs found.</p>}
+                  {filteredClubs.length === 0 && (
+                    <p className="text-gray-600">
+                      {clubs.length === 0 ? 'No clubs found.' : 'No clubs match your search.'}
+                    </p>
+                  )}
                 </div>
               </div>
             </section>

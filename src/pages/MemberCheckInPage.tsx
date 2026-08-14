@@ -94,10 +94,13 @@ const MemberCheckInPage: React.FC = () => {
       setIsSearching(true);
       try {
         const normalizedTerm = term.toLowerCase();
+        const normalizedPhoneTerm = term.replace(/\D/g, '');
         let filtered = availableMembers
           .filter((member) => {
-            const haystack = `${member.name} ${member.email} ${member.memberId || ''}`.toLowerCase();
-            return haystack.includes(normalizedTerm);
+            const haystack = `${member.name} ${member.email} ${member.phone} ${member.memberId || ''}`.toLowerCase();
+            const normalizedMemberPhone = member.phone.replace(/\D/g, '');
+            return haystack.includes(normalizedTerm) ||
+              (normalizedPhoneTerm.length > 0 && normalizedMemberPhone.includes(normalizedPhoneTerm));
           })
           .slice(0, 25);
 

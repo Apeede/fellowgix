@@ -1,12 +1,10 @@
 import { connectAuthEmulator, browserLocalPersistence, browserSessionPersistence, getAuth, inMemoryPersistence, setPersistence } from 'firebase/auth';
 import { connectFirestoreEmulator, getFirestore } from 'firebase/firestore';
-import { connectFunctionsEmulator, getFunctions } from 'firebase/functions';
 import { app } from '../../config/firebase-config';
 
 // Initialize services
 export const auth = getAuth(app);
 export const db = getFirestore(app);
-export const functions = getFunctions(app, 'us-central1');
 export const authReady = (async () => {
   try {
     await setPersistence(auth, browserLocalPersistence);
@@ -24,7 +22,6 @@ if (process.env.NODE_ENV === 'development' && import.meta.env.VITE_USE_EMULATOR 
   try {
     connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true });
     connectFirestoreEmulator(db, 'localhost', 8080);
-    connectFunctionsEmulator(functions, 'localhost', 5001);
   } catch (error) {
     // Emulators already connected
   }

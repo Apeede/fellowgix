@@ -1,5 +1,4 @@
 import QRCode from 'qrcode';
-import { v4 as uuidv4 } from 'uuid';
 import { downloadDataUrl, safeDownloadName } from '@/utils/download';
 
 /**
@@ -62,7 +61,7 @@ class QRCodeGeneratorService {
    * Generate a unique event ID
    */
   generateEventId(): string {
-    return uuidv4();
+    return crypto.randomUUID();
   }
 
   /**

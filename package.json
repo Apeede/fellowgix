@@ -11,8 +11,7 @@
     "backup:firestore": "./scripts/backup-firestore.sh fellowgix"
   },
   "dependencies": {
-    "axios": "^1.6.4",
-    "firebase": "^10.14.1",
+    "firebase": "^12.17.1",
     "html2canvas": "^1.4.1",
     "html5-qrcode": "^2.3.4",
     "lucide-react": "^0.321.0",
@@ -20,8 +19,7 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-hot-toast": "^2.4.1",
-    "react-router-dom": "^7.13.2",
-    "uuid": "^13.0.0"
+    "react-router-dom": "^7.18.2"
   },
   "devDependencies": {
     "@types/react": "^18.2.43",
