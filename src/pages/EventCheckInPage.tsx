@@ -105,7 +105,7 @@ const EventCheckInPage: React.FC = () => {
                     <div className="w-20 h-20 bg-primary-100 rounded-full flex items-center justify-center mb-4 group-hover:bg-primary-200 transition-colors">
                       <User className="w-10 h-10 text-primary-600" />
                     </div>
-                    <h3 className="text-2xl font-bold text-gray-900 mb-2">Club Member</h3>
+                    <h3 className="text-2xl font-bold text-gray-900 mb-2"> Member</h3>
                     <p className="text-gray-600 text-center">
                       I'm a club member. I’ll search using my name, email, or member ID
                     </p>

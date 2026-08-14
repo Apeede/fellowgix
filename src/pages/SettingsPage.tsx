@@ -10,7 +10,6 @@ const SettingsPage: React.FC = () => {
   const { currentAdmin } = useAuth();
   const navigate = useNavigate();
   const [isSendingReset, setIsSendingReset] = useState(false);
-  const [organizationLogo, setOrganizationLogo] = useState('');
   const [clubLogo, setClubLogo] = useState('');
   const [eCardMessage, setECardMessage] = useState('');
   const [isSavingBranding, setIsSavingBranding] = useState(false);
@@ -20,8 +19,7 @@ const SettingsPage: React.FC = () => {
     if (!currentAdmin?.clubId) return;
     clubService.getClubById(currentAdmin.clubId).then((club) => {
       if (!club) return;
-      setOrganizationLogo(club.organizationLogo || '');
-      setClubLogo(club.clubLogo || '');
+      setClubLogo(club.clubLogo || club.organizationLogo || '');
       setECardMessage(club.eCardMessage || '');
     }).catch(() => toast.error('Failed to load e-card branding'));
   }, [currentAdmin?.clubId]);
@@ -49,7 +47,7 @@ const SettingsPage: React.FC = () => {
     setIsSavingBranding(true);
     try {
       await clubService.updateECardBranding(currentAdmin.clubId, {
-        organizationLogo,
+        organizationLogo: '',
         clubLogo,
         eCardMessage,
       });
@@ -133,30 +131,24 @@ const SettingsPage: React.FC = () => {
             <h2 className="text-lg font-semibold text-gray-900">E-Card Branding</h2>
           </div>
           <p className="text-sm text-gray-600 mb-5">
-            Add logos and a message to the “Thank you for attending” card for your club’s events.
+            Add one club logo and a message to the “Thank you for attending” card for your club’s events.
           </p>
 
           {canManageBranding ? (
             <div className="space-y-5">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                {[
-                  { label: 'Rotary / Rotaract logo', value: organizationLogo, setValue: setOrganizationLogo },
-                  { label: 'Club logo', value: clubLogo, setValue: setClubLogo },
-                ].map(({ label, value, setValue }) => (
-                  <div key={label} className="border border-gray-200 rounded-lg p-4">
-                    <p className="text-sm font-medium text-gray-900 mb-3">{label}</p>
-                    <div className="h-28 bg-gray-50 rounded-lg flex items-center justify-center mb-3 overflow-hidden">
-                      {value ? <img src={value} alt={`${label} preview`} className="max-h-24 max-w-full object-contain" /> : <span className="text-sm text-gray-400">No logo selected</span>}
-                    </div>
-                    <div className="flex gap-2">
-                      <label className="btn-outline cursor-pointer text-sm">
-                        Upload
-                        <input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={handleLogo(setValue)} />
-                      </label>
-                      {value && <button type="button" onClick={() => setValue('')} className="btn-outline text-sm inline-flex items-center gap-1"><Trash2 className="w-4 h-4" /> Remove</button>}
-                    </div>
+              <div className="max-w-md border border-gray-200 rounded-lg p-4">
+                <p className="text-sm font-medium text-gray-900 mb-1">E-card logo</p>
+                <p className="text-xs text-gray-500 mb-3">A transparent PNG works best.</p>
+                <div className="h-28 bg-gray-50 rounded-lg flex items-center justify-center mb-3 overflow-hidden">
+                  {clubLogo ? <img src={clubLogo} alt="E-card logo preview" className="max-h-24 max-w-full object-contain" /> : <span className="text-sm text-gray-400">No logo selected</span>}
+                </div>
+                <div className="flex gap-2">
+                  <label className="btn-outline cursor-pointer text-sm">
+                    Upload
+                    <input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={handleLogo(setClubLogo)} />
+                  </label>
+                  {clubLogo && <button type="button" onClick={() => setClubLogo('')} className="btn-outline text-sm inline-flex items-center gap-1"><Trash2 className="w-4 h-4" /> Remove</button>}
                   </div>
-                ))}
               </div>
 
               <div>

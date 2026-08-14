@@ -1,5 +1,6 @@
 import QRCode from 'qrcode';
 import { v4 as uuidv4 } from 'uuid';
+import { downloadDataUrl, safeDownloadName } from '@/utils/download';
 
 /**
  * Service for generating QR codes
@@ -69,12 +70,7 @@ class QRCodeGeneratorService {
    */
   async downloadQRCode(qrDataUrl: string, eventName: string): Promise<void> {
     try {
-      const link = document.createElement('a');
-      link.href = qrDataUrl;
-      link.download = `${eventName.replace(/\s+/g, '_')}_QR_Code.png`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      await downloadDataUrl(qrDataUrl, `${safeDownloadName(eventName, 'event')}-QR-Code.png`);
     } catch (error) {
       throw new Error(`Failed to download QR code: ${(error instanceof Error ? error.message : String(error))}`);
     }

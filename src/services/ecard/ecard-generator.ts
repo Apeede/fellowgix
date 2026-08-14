@@ -15,6 +15,7 @@ export interface ECardData {
   organizationLogo?: string;
   clubLogo?: string;
   customMessage?: string;
+  clubType?: 'rotary' | 'rotaract';
 }
 
 export class ECardGeneratorService {
@@ -75,154 +76,66 @@ export class ECardGeneratorService {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     `;
 
-    // Main card background with gradient
-    const colorRegex = /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/;
-    const bgColor = colorRegex.test(data.eventColor) ? data.eventColor : '#6366f1';
     const safeImage = (value?: string) => value && /^data:image\/(png|jpeg|webp);base64,[a-z0-9+/=]+$/i.test(value) ? value : '';
-    const organizationLogo = safeImage(data.organizationLogo);
-    const clubLogo = safeImage(data.clubLogo);
-    const logos = [organizationLogo, clubLogo].filter(Boolean);
-    const message = data.customMessage?.trim() || 'Thank you for joining us at this fellowship. Your presence contributed to a meaningful and engaging experience, and we truly appreciate the time you took to be part of it.';
+    const logo = safeImage(data.clubLogo) || safeImage(data.organizationLogo);
+    const message = data.customMessage?.trim() || 'Thank you for sharing your time and energy with us. Your presence helped make this gathering meaningful, and we look forward to welcoming you again.';
+    const isRotary = data.clubType === 'rotary';
+    const primaryColor = isRotary ? '#17458f' : '#d41367';
+    const secondaryColor = isRotary ? '#f7a81b' : '#f05a28';
+    const paleColor = isRotary ? '#eef4fb' : '#fff0f5';
+    const clubFamily = isRotary ? 'ROTARY' : 'ROTARACT';
     container.innerHTML = `
       <div style="
         width: 100%;
         height: 100%;
-        background: linear-gradient(135deg, ${bgColor} 0%, ${this.darkenColor(bgColor, 20)} 100%);
-        border-radius: 20px;
-        display: flex;
-        flex-direction: column;
+        background: #ffffff;
+        border-radius: 22px;
         overflow: hidden;
         box-shadow: 0 20px 60px rgba(0,0,0,0.3);
         position: relative;
+        color:#172033;
       ">
-        <!-- Header -->
-        <div style="
-          background: rgba(255,255,255,0.1);
-          padding: 30px 110px 20px;
-          text-align: center;
-          border-bottom: 1px solid rgba(255,255,255,0.2);
-          position: relative;
-        ">
-          ${logos.map((logo, index) => `<div style="position:absolute;top:13px;${index === 0 ? 'left:28px' : 'right:28px'};width:64px;height:64px;background:white;border-radius:12px;padding:6px;display:flex;align-items:center;justify-content:center;"><img src="${logo}" alt="Club branding" style="max-width:100%;max-height:100%;object-fit:contain;" /></div>`).join('')}
-          <h1 style="
-            font-size: 32px;
-            font-weight: 700;
-            color: white;
-            margin: 0;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
-          ">
-            Thank You for Attending
-          </h1>
-        </div>
+        <div style="position:absolute;left:0;top:0;bottom:0;width:15px;background:linear-gradient(180deg,${primaryColor} 0%,${primaryColor} 72%,${secondaryColor} 72%,${secondaryColor} 100%);"></div>
+        <div style="position:absolute;right:-115px;top:-130px;width:330px;height:330px;border-radius:50%;background:${paleColor};"></div>
+        <div style="position:absolute;right:-32px;top:-62px;width:190px;height:190px;border-radius:50%;border:2px solid ${secondaryColor};opacity:.32;"></div>
 
-        <!-- Main Content -->
-        <div style="
-          flex: 1;
-          padding: 30px 40px;
-          display: flex;
-          flex-direction: column;
-          justify-content: space-between;
-        ">
-          <!-- Thank You Message -->
-          <div style="color: white; margin-bottom: 30px;">
-            <p style="
-              font-size: 16px;
-              line-height: 1.6;
-              margin: 0;
-              text-align: center;
-              white-space: pre-line;
-            ">
-              ${this.escapeHtml(message)}
-            </p>
+        <div style="height:100%;box-sizing:border-box;padding:42px 52px 34px 62px;display:flex;flex-direction:column;position:relative;">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;min-height:78px;">
+            <div style="height:74px;display:flex;align-items:flex-start;">
+              ${logo ? `<img src="${logo}" alt="Club logo" style="display:block;max-width:190px;max-height:74px;width:auto;height:auto;object-fit:contain;object-position:left top;" />` : `<div style="font-size:20px;font-weight:800;letter-spacing:2px;color:${primaryColor};">${clubFamily}</div>`}
+            </div>
+            <div style="padding:9px 14px;border:1px solid ${primaryColor};color:${primaryColor};font-size:10px;font-weight:800;letter-spacing:2.2px;border-radius:999px;">${clubFamily} FELLOWSHIP</div>
           </div>
 
-          <!-- Event Details -->
-          <div style="
-            background: rgba(255,255,255,0.1);
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 20px;
-            color: white;
-          ">
-            <h3 style="
-              font-size: 18px;
-              font-weight: 600;
-              margin: 0 0 15px 0;
-              text-align: center;
-            ">
-              Event Details
-            </h3>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 14px;">
-              <div><strong>Event:</strong> ${this.escapeHtml(data.eventName)}</div>
-              <div><strong>Date:</strong> ${this.escapeHtml(data.eventDate)}</div>
-              ${data.eventTheme ? `<div><strong>Theme:</strong> ${this.escapeHtml(data.eventTheme)}</div>` : ''}
-              ${data.eventSpeaker ? `<div><strong>Speaker:</strong> ${this.escapeHtml(data.eventSpeaker)}</div>` : ''}
+          <div style="margin-top:14px;">
+            <div style="font-size:13px;font-weight:800;letter-spacing:3.4px;color:${secondaryColor};margin-bottom:8px;">THANK YOU FOR ATTENDING</div>
+            <div style="font-family:Georgia,'Times New Roman',serif;font-size:38px;line-height:1.1;font-weight:700;color:${primaryColor};margin-bottom:6px;">${this.escapeHtml(data.attendeeName)}</div>
+            <div style="width:76px;height:4px;background:${secondaryColor};"></div>
+          </div>
+
+          <p style="font-size:14px;line-height:1.55;color:#475467;white-space:pre-line;margin:17px 0 19px;max-width:650px;">
+            ${this.escapeHtml(message)}
+          </p>
+
+          <div style="background:${paleColor};border-left:4px solid ${primaryColor};padding:15px 18px;display:grid;grid-template-columns:1.55fr 1fr;gap:22px;">
+            <div>
+              <div style="font-size:9px;font-weight:800;letter-spacing:1.8px;color:${primaryColor};margin-bottom:5px;">EVENT</div>
+              <div style="font-size:17px;line-height:1.25;font-weight:750;color:#172033;">${this.escapeHtml(data.eventName)}</div>
+              ${data.eventTheme ? `<div style="font-size:11px;line-height:1.35;color:#667085;margin-top:4px;">${this.escapeHtml(data.eventTheme)}</div>` : ''}
+            </div>
+            <div>
+              <div style="font-size:9px;font-weight:800;letter-spacing:1.8px;color:${primaryColor};margin-bottom:5px;">DATE</div>
+              <div style="font-size:12px;line-height:1.45;font-weight:650;color:#344054;">${this.escapeHtml(data.eventDate)}</div>
+              ${data.eventSpeaker ? `<div style="font-size:10px;line-height:1.4;color:#667085;margin-top:4px;">Speaker: ${this.escapeHtml(data.eventSpeaker)}</div>` : ''}
             </div>
           </div>
 
-          <!-- Attendee Info -->
-          <div style="
-            background: rgba(255,255,255,0.95);
-            border-radius: 12px;
-            padding: 20px;
-            color: #1f2937;
-            text-align: center;
-          ">
-            <h3 style="
-              font-size: 18px;
-              font-weight: 600;
-              margin: 0 0 15px 0;
-              color: ${bgColor};
-            ">
-              Attendee
-            </h3>
-            <p style="
-              font-size: 20px;
-              font-weight: 600;
-              margin: 0 0 8px 0;
-            ">
-              ${this.escapeHtml(data.attendeeName)}
-            </p>
-            <p style="
-              font-size: 14px;
-              color: #6b7280;
-              margin: 0;
-            ">
-              ${data.club ? this.escapeHtml(data.club) : 'Guest'}
-            </p>
-          </div>
-
-          <!-- Footer Message -->
-          <div style="
-            text-align: center;
-            color: white;
-            margin-top: 20px;
-          ">
-            <p style="
-              font-size: 14px;
-              font-style: italic;
-              margin: 0;
-            ">
-              We look forward to welcoming you again.
-            </p>
-          </div>
-        </div>
-
-        <!-- Bottom Decoration -->
-        <div style="
-          height: 60px;
-          background: rgba(255,255,255,0.1);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border-top: 1px solid rgba(255,255,255,0.2);
-        ">
-          <div style="
-            font-size: 12px;
-            color: rgba(255,255,255,0.7);
-            text-align: center;
-          ">
-            Checked in on ${this.escapeHtml(data.checkInTime)}
+          <div style="margin-top:auto;display:flex;align-items:flex-end;justify-content:space-between;padding-top:17px;">
+            <div>
+              <div style="font-size:10px;font-weight:750;color:#344054;">${data.club ? this.escapeHtml(data.club) : (data.type === 'member' ? 'Member' : 'Guest')}</div>
+              <div style="font-size:9px;color:#98a2b3;margin-top:4px;">Attendance confirmed at ${this.escapeHtml(data.checkInTime)}</div>
+            </div>
+            <div style="font-family:Georgia,'Times New Roman',serif;font-size:15px;font-style:italic;color:${primaryColor};">Service • Fellowship • Impact</div>
           </div>
         </div>
       </div>
@@ -238,18 +151,6 @@ export class ECardGeneratorService {
   static async embedQRCode(): Promise<void> {
     // QR code embedding deferred for future enhancement
     // Can implement using dynamic canvas rendering if needed
-  }
-
-  /**
-   * Darken a hex color by a percentage
-   */
-  private static darkenColor(hex: string, percent: number): string {
-    const num = parseInt(hex.replace('#', ''), 16);
-    const amt = Math.round(2.55 * percent);
-    const R = Math.max(0, num >> 16) - amt;
-    const G = Math.max(0, (num >> 8) & 0x00ff) - amt;
-    const B = Math.max(0, num & 0x0000ff) - amt;
-    return `#${(0x1000000 + (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 + (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 + (B < 255 ? B < 1 ? 0 : B : 255)).toString(16).slice(1)}`;
   }
 
   /**

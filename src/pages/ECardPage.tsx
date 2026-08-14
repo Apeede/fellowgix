@@ -1,6 +1,7 @@
 import { ECardData, ECardGeneratorService } from '@services/ecard/ecard-generator';
 import { eventService } from '@services/firebase/event-service';
 import { clubService } from '@services/firebase/club-service';
+import { downloadDataUrl, safeDownloadName } from '@/utils/download';
 import { ArrowLeft, Download, Loader, Share2 } from 'lucide-react';
 import React, { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
@@ -73,6 +74,7 @@ const ECardPage: React.FC = () => {
         organizationLogo: hostClub?.organizationLogo,
         clubLogo: hostClub?.clubLogo,
         customMessage: hostClub?.eCardMessage,
+        clubType: hostClub?.clubType,
       };
 
       const { dataUrl } = await ECardGeneratorService.generateECard(eCardData);
@@ -101,12 +103,10 @@ const ECardPage: React.FC = () => {
 
     setIsDownloading(true);
     try {
-      const link = document.createElement('a');
-      link.href = eCardImage;
-      link.download = `ecard-${state.attendeeName.replace(/\s+/g, '-')}-${Date.now()}.png`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      await downloadDataUrl(
+        eCardImage,
+        `ecard-${safeDownloadName(state.attendeeName, 'attendee')}-${Date.now()}.png`
+      );
       toast.success('E-card downloaded!');
     } catch (error) {
       toast.error('Failed to download e-card');

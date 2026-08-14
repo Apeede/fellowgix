@@ -18,14 +18,36 @@ import { Toaster } from 'react-hot-toast';
 import { Navigate, Route, BrowserRouter as Router, Routes, useParams } from 'react-router-dom';
 import './index.css';
 
-const SuperAdminPage = React.lazy(() => import('@pages/SuperAdminPage'));
-const EventAnalyticsPage = React.lazy(() => import('@pages/EventAnalyticsPage'));
-const AttendanceListPage = React.lazy(() => import('@pages/AttendanceListPage'));
-const ClubAnalyticsPage = React.lazy(() => import('@pages/ClubAnalyticsPage'));
-const SystemAnalyticsPage = React.lazy(() => import('@pages/SystemAnalyticsPage'));
-const SettingsPage = React.lazy(() => import('@pages/SettingsPage'));
-const HelpCenterPage = React.lazy(() => import('@pages/HelpCenterPage'));
-const EditEventPage = React.lazy(() => import('@pages/EditEventPage'));
+const CHUNK_RELOAD_KEY = 'fellowgix-chunk-reload';
+
+function lazyWithReload<T extends React.ComponentType<object>>(
+  importer: () => Promise<{ default: T }>
+) {
+  return React.lazy(async () => {
+    try {
+      const module = await importer();
+      sessionStorage.removeItem(CHUNK_RELOAD_KEY);
+      return module;
+    } catch (error) {
+      if (!sessionStorage.getItem(CHUNK_RELOAD_KEY)) {
+        sessionStorage.setItem(CHUNK_RELOAD_KEY, 'true');
+        window.location.reload();
+        return new Promise<{ default: T }>(() => undefined);
+      }
+      sessionStorage.removeItem(CHUNK_RELOAD_KEY);
+      throw error;
+    }
+  });
+}
+
+const SuperAdminPage = lazyWithReload(() => import('@pages/SuperAdminPage'));
+const EventAnalyticsPage = lazyWithReload(() => import('@pages/EventAnalyticsPage'));
+const AttendanceListPage = lazyWithReload(() => import('@pages/AttendanceListPage'));
+const ClubAnalyticsPage = lazyWithReload(() => import('@pages/ClubAnalyticsPage'));
+const SystemAnalyticsPage = lazyWithReload(() => import('@pages/SystemAnalyticsPage'));
+const SettingsPage = lazyWithReload(() => import('@pages/SettingsPage'));
+const HelpCenterPage = lazyWithReload(() => import('@pages/HelpCenterPage'));
+const EditEventPage = lazyWithReload(() => import('@pages/EditEventPage'));
 
 const PublicQRCodeRedirect: React.FC = () => {
   const { eventId } = useParams<{ eventId: string }>();

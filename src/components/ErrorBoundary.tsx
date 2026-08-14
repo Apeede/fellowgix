@@ -39,11 +39,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
   }
 
   handleReset = (): void => {
-    this.setState({
-      hasError: false,
-      error: null,
-      errorInfo: null,
-    });
+    window.location.reload();
   };
 
   render(): ReactNode {
@@ -85,7 +81,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
                 className="w-full bg-primary-600 hover:bg-primary-700 text-white font-semibold py-3 px-4 rounded-lg transition duration-200 flex items-center justify-center gap-2"
               >
                 <RefreshCw className="w-4 h-4" />
-                Try Again
+                Refresh and Try Again
               </button>
 
               {/* Alternative Action */}
