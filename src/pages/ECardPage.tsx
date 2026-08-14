@@ -1,5 +1,6 @@
 import { ECardData, ECardGeneratorService } from '@services/ecard/ecard-generator';
 import { eventService } from '@services/firebase/event-service';
+import { clubService } from '@services/firebase/club-service';
 import { ArrowLeft, Download, Loader, Share2 } from 'lucide-react';
 import React, { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
@@ -45,6 +46,8 @@ const ECardPage: React.FC = () => {
 
       setEventDetails(event);
 
+      const hostClub = event.clubId ? await clubService.getClubById(event.clubId) : null;
+
       // Generate e-card
       const eCardData: ECardData = {
         eventName: event.name,
@@ -67,6 +70,9 @@ const ECardPage: React.FC = () => {
           second: '2-digit',
         }),
         eventColor: event.theme || '#6366f1',
+        organizationLogo: hostClub?.organizationLogo,
+        clubLogo: hostClub?.clubLogo,
+        customMessage: hostClub?.eCardMessage,
       };
 
       const { dataUrl } = await ECardGeneratorService.generateECard(eCardData);

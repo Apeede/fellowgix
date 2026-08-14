@@ -12,6 +12,9 @@ export interface ECardData {
   club?: string;
   checkInTime: string;
   eventColor: string;
+  organizationLogo?: string;
+  clubLogo?: string;
+  customMessage?: string;
 }
 
 export class ECardGeneratorService {
@@ -75,6 +78,11 @@ export class ECardGeneratorService {
     // Main card background with gradient
     const colorRegex = /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/;
     const bgColor = colorRegex.test(data.eventColor) ? data.eventColor : '#6366f1';
+    const safeImage = (value?: string) => value && /^data:image\/(png|jpeg|webp);base64,[a-z0-9+/=]+$/i.test(value) ? value : '';
+    const organizationLogo = safeImage(data.organizationLogo);
+    const clubLogo = safeImage(data.clubLogo);
+    const logos = [organizationLogo, clubLogo].filter(Boolean);
+    const message = data.customMessage?.trim() || 'Thank you for joining us at this fellowship. Your presence contributed to a meaningful and engaging experience, and we truly appreciate the time you took to be part of it.';
     container.innerHTML = `
       <div style="
         width: 100%;
@@ -90,10 +98,12 @@ export class ECardGeneratorService {
         <!-- Header -->
         <div style="
           background: rgba(255,255,255,0.1);
-          padding: 30px 40px 20px;
+          padding: 30px 110px 20px;
           text-align: center;
           border-bottom: 1px solid rgba(255,255,255,0.2);
+          position: relative;
         ">
+          ${logos.map((logo, index) => `<div style="position:absolute;top:13px;${index === 0 ? 'left:28px' : 'right:28px'};width:64px;height:64px;background:white;border-radius:12px;padding:6px;display:flex;align-items:center;justify-content:center;"><img src="${logo}" alt="Club branding" style="max-width:100%;max-height:100%;object-fit:contain;" /></div>`).join('')}
           <h1 style="
             font-size: 32px;
             font-weight: 700;
@@ -120,8 +130,9 @@ export class ECardGeneratorService {
               line-height: 1.6;
               margin: 0;
               text-align: center;
+              white-space: pre-line;
             ">
-              Thank you for joining us at this fellowship. Your presence contributed to a meaningful and engaging experience, and we truly appreciate the time you took to be part of it.
+              ${this.escapeHtml(message)}
             </p>
           </div>
 

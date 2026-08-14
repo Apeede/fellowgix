@@ -8,8 +8,17 @@ export interface Club {
   clubCode?: string;
   normalizedName: string;
   isActive: boolean;
+  organizationLogo?: string;
+  clubLogo?: string;
+  eCardMessage?: string;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface ClubECardBranding {
+  organizationLogo?: string;
+  clubLogo?: string;
+  eCardMessage?: string;
 }
 
 export interface CreateClubInput {

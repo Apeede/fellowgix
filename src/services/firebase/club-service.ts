@@ -1,4 +1,4 @@
-import { Club, ClubType, CreateClubInput } from '@types/club';
+import { Club, ClubECardBranding, ClubType, CreateClubInput } from '@types/club';
 import {
   collection,
   doc,
@@ -26,9 +26,28 @@ class ClubService {
       clubCode: String(data.clubCode || '').trim() || undefined,
       normalizedName: String(data.normalizedName || normalizeClubName(String(data.clubName || ''))),
       isActive: data.isActive !== false,
+      organizationLogo: String(data.organizationLogo || '').trim() || undefined,
+      clubLogo: String(data.clubLogo || '').trim() || undefined,
+      eCardMessage: String(data.eCardMessage || '').trim() || undefined,
       createdAt: firestoreTimestampToDate(data.createdAt),
       updatedAt: firestoreTimestampToDate(data.updatedAt),
     };
+  }
+
+  async updateECardBranding(clubId: string, branding: ClubECardBranding): Promise<void> {
+    const normalizedClubId = clubId.trim();
+    if (!normalizedClubId) throw new Error('Club ID is required');
+
+    await setDoc(
+      doc(db, this.collectionName, normalizedClubId),
+      {
+        organizationLogo: branding.organizationLogo || '',
+        clubLogo: branding.clubLogo || '',
+        eCardMessage: branding.eCardMessage?.trim() || '',
+        updatedAt: Timestamp.now(),
+      },
+      { merge: true }
+    );
   }
 
   async getClubById(clubId: string): Promise<Club | null> {
