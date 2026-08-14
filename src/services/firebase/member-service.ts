@@ -51,17 +51,21 @@ class MemberService {
     clubId: string,
     normalizedClubName?: string
   ): boolean {
+    const rawClubName = this.normalizeSearchText(String(raw.club || raw.clubName || ''));
+    const targetClubName = this.normalizeSearchText(normalizedClubName || '');
     const targetScopeKey = this.resolveClubScopeKey(clubId, normalizedClubName);
     const rawScopeKey = this.resolveClubScopeKey(
       String(raw.clubId || ''),
-      String(raw.club || raw.clubName || '')
+      rawClubName
     );
 
-    if (!targetScopeKey || !rawScopeKey) {
-      return false;
+    if (targetScopeKey && rawScopeKey && rawScopeKey === targetScopeKey) {
+      return true;
     }
 
-    return rawScopeKey === targetScopeKey;
+    // Recreated and migrated clubs can have different IDs while retaining the same name.
+    // Accept the canonical name as a fallback so those valid legacy members remain eligible.
+    return Boolean(targetClubName && rawClubName && rawClubName === targetClubName);
   }
 
   /**
@@ -239,8 +243,7 @@ class MemberService {
         .filter((member) => {
           const haystack = `${member.name} ${member.email} ${member.phone} ${member.memberId || ''}`.toLowerCase();
           return haystack.includes(normalizedTerm) || (normalizedPhoneTerm ? member.phone.includes(normalizedPhoneTerm) : false);
-        })
-        .slice(0, 25);
+        });
     } catch (error) {
       throw new Error(`Failed to search members: ${(error instanceof Error ? error.message : String(error))}`);
     }

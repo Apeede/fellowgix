@@ -95,14 +95,12 @@ const MemberCheckInPage: React.FC = () => {
       try {
         const normalizedTerm = term.toLowerCase();
         const normalizedPhoneTerm = term.replace(/\D/g, '');
-        let filtered = availableMembers
-          .filter((member) => {
+        let filtered = availableMembers.filter((member) => {
             const haystack = `${member.name} ${member.email} ${member.phone} ${member.memberId || ''}`.toLowerCase();
             const normalizedMemberPhone = member.phone.replace(/\D/g, '');
             return haystack.includes(normalizedTerm) ||
               (normalizedPhoneTerm.length > 0 && normalizedMemberPhone.includes(normalizedPhoneTerm));
-          })
-          .slice(0, 25);
+          });
 
         if (filtered.length === 0 && availableMembers.length === 0) {
           filtered = await memberService.searchMembers(term, eventClubId, eventClubName);
